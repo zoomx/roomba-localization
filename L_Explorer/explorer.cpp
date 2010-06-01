@@ -8,7 +8,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
-#include "arduinomega/WProgram.h"
+#include "arduino/WProgram.h"
 #include "radio/radio.h"
 #include "radio/packet.h"
 
