@@ -32,20 +32,26 @@
 <tool id="de.innot.avreclipse.tool.compiler.winavr.app.debug.567457812" name="AVR Compiler" superClass="de.innot.avreclipse.tool.compiler.winavr.app.debug">
 <option id="de.innot.avreclipse.compiler.option.debug.level.149430454" name="Generate Debugging Info" superClass="de.innot.avreclipse.compiler.option.debug.level"/>
 <option id="de.innot.avreclipse.compiler.option.optimize.1892473029" name="Optimization Level" superClass="de.innot.avreclipse.compiler.option.optimize"/>
+<option id="de.innot.avreclipse.compiler.option.incpath.1973450121" name="Include Paths (-I)" superClass="de.innot.avreclipse.compiler.option.incpath" valueType="includePath">
+<listOptionValue builtIn="false" value="&quot;${workspace_loc:/L_Shared}&quot;"/>
+</option>
 <inputType id="de.innot.avreclipse.compiler.winavr.input.1557869935" name="C Source Files" superClass="de.innot.avreclipse.compiler.winavr.input"/>
 </tool>
 <tool id="de.innot.avreclipse.tool.cppcompiler.app.debug.1837585107" name="AVR C++ Compiler" superClass="de.innot.avreclipse.tool.cppcompiler.app.debug">
 <option id="de.innot.avreclipse.cppcompiler.option.debug.level.1648900284" name="Generate Debugging Info" superClass="de.innot.avreclipse.cppcompiler.option.debug.level"/>
 <option id="de.innot.avreclipse.cppcompiler.option.optimize.643808036" name="Optimization Level" superClass="de.innot.avreclipse.cppcompiler.option.optimize"/>
+<option id="de.innot.avreclipse.cppcompiler.option.incpath.1118422487" name="Include Paths (-I)" superClass="de.innot.avreclipse.cppcompiler.option.incpath" valueType="includePath">
+<listOptionValue builtIn="false" value="&quot;${workspace_loc:/L_Shared}&quot;"/>
+</option>
 <inputType id="de.innot.avreclipse.cppcompiler.input.1928606209" superClass="de.innot.avreclipse.cppcompiler.input"/>
 </tool>
 <tool id="de.innot.avreclipse.tool.linker.winavr.app.debug.1395869224" name="AVR C Linker" superClass="de.innot.avreclipse.tool.linker.winavr.app.debug"/>
 <tool id="de.innot.avreclipse.tool.cpplinker.app.debug.1548127078" name="AVR C++ Linker" superClass="de.innot.avreclipse.tool.cpplinker.app.debug">
 <option id="de.innot.avreclipse.cpplinker.option.libpath.627159328" name="Libraries Path (-L)" superClass="de.innot.avreclipse.cpplinker.option.libpath" valueType="stringList">
-<listOptionValue builtIn="false" value="&quot;${workspace_loc:/L_Sonar/arduinomega}&quot;"/>
+<listOptionValue builtIn="false" value="&quot;${workspace_loc:/L_Shared/Debug}&quot;"/>
 </option>
 <option id="de.innot.avreclipse.cpplinker.option.libs.520672189" name="Libraries (-l)" superClass="de.innot.avreclipse.cpplinker.option.libs" valueType="libs">
-<listOptionValue builtIn="false" value="megaCore"/>
+<listOptionValue builtIn="false" value="shared"/>
 </option>
 </tool>
 <tool id="de.innot.avreclipse.tool.archiver.winavr.base.1765905785" name="AVR Archiver" superClass="de.innot.avreclipse.tool.archiver.winavr.base"/>
