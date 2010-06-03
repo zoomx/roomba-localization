@@ -3,6 +3,7 @@
 	<name>L_Sonar</name>
 	<comment></comment>
 	<projects>
+		<project>L_Shared</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
