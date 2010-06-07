@@ -1,8 +1,8 @@
-#Thu Jun 03 15:20:31 PDT 2010
-avrtarget/ClockFrequency=16000000
+#Wed Feb 04 18:10:09 PST 2009
+avrtarget/ClockFrequency=8000000
 avrtarget/ExtRAMSize=0
 avrtarget/ExtendedRAM=false
-avrtarget/MCUType=atmega1280
+avrtarget/MCUType=at90usb1287
 avrtarget/UseEEPROM=false
 avrtarget/UseExtendedRAMforHeap=true
 avrtarget/avrdude/BitBangDelay=

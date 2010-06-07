@@ -18,6 +18,8 @@ typedef enum _pt
 	EMPTY,			// not a realized packet type; empty means that the packet structure contains invalid data
 	REQUEST_ECHO,	// explorer sends sonar station an echo request
 	CONFIRM_ECHO,	// sonar station replies with confirmation as soon as sonar pulse is transmitted
+	MOVE_ROOMBA,	// base sends a movement command to the explorer
+	LOG_DATA,		// explorer sends distance/angle/beacon readings to the base
 } PACKET_TYPE;
 
 /*****							Construct payload format structures							*****/
@@ -34,6 +36,19 @@ typedef struct _ce
 	uint8_t station_id;			/// The ID of the station sending the echo
 } pf_confirm_echo_t;
 
+typedef struct _mr
+{
+	int16_t angle; 				/// Angle for the Roomba to move (in Roomba format)
+	int16_t distance;			/// Distance for the Roomba to move straight (in mm)
+} pf_move_roomba_t;
+
+typedef struct _ld
+{
+	int16_t angle;				/// Angle Roomba moved (in Roomba format)
+	int16_t distance;			/// Distance Roomba moved (in mm)
+	uint16_t beacon_distance[5];/// Distance from Roomba to each beacon
+} pf_log_data_t;
+
 /*****							Add format structures to the union							*****/
 
 /// The application-dependent packet format.  Add structures to the union that correspond to the packet types defined
@@ -44,6 +59,8 @@ typedef union _pf
 	uint8_t _filler[29];	// make sure the packet is exactly 32 bytes long - this array should not be accessed directly.
 	pf_request_echo_t request;
 	pf_confirm_echo_t confirm;
+	pf_move_roomba_t move;
+	pf_log_data_t log;
 } payloadformat_t;
 
 /*****						Leave the radiopacket_t structure alone.						*****/
