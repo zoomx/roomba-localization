@@ -27,18 +27,21 @@ volatile RADIO_STATE radio_state = NO_PACKET;
 radiopacket_t packet;
 uint8_t sensor_address[RADIO_ADDRESS_LENGTH] = {0xB7, 0xB7, 0xB7, 0xB7, STATION_ID};
 
+uint8_t powerPin = 9;
+uint8_t ledPin = 13;
+
 int main()
 {
 	cli();
 	init();
 
-	pinMode(13, OUTPUT);	// LED
-	digitalWrite(13, LOW);
+	pinMode(ledPin, OUTPUT);	// LED
+	digitalWrite(ledPin, LOW);
 
-	pinMode(9, OUTPUT);		// power cycle radio
-	digitalWrite(9, LOW);
+	pinMode(powerPin, OUTPUT);		// power cycle radio
+	digitalWrite(powerPin, LOW);
 	_delay_ms(100);
-	digitalWrite(9, HIGH);
+	digitalWrite(powerPin, HIGH);
 	_delay_ms(100);
 
 	sei();
@@ -66,7 +69,7 @@ int main()
 				Sonar_Trigger();
 			}
 			packet.type = EMPTY;
-			digitalWrite(13, !digitalRead(13));
+			digitalWrite(ledPin, !digitalRead(ledPin));
 		}
 	}
 
