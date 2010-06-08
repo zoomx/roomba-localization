@@ -7,5 +7,8 @@ I would recommend running this in command prompt (you can see errors if program 
 
 I have not implemented a clean exit yet, so just use Ctrl + C.
 
-Change globalConfig for your needs. If you cannot connect to a device that is plugged in, it 
-is probably because you did not change the COM port / baud rate.
+Change globalConfig for your needs. If you cannot connect to a device that is plugged in:
+ - Did not change globalConfig
+ - Not plugged in
+ - Not the COM port you think it is
+ - Something else is using that port (RealTerm, AVRDude or another uartMain)
