@@ -8,7 +8,7 @@ def RoombaAngleToDegrees(ang):
 def DegreesToRoombaAngle(deg):
     # Angle in degrees from Roomba Spec
     # (int)(360 * a) / (258 * PI)
-    return (deg * 129 * math.pi) / 360
+    return (deg * 258 * math.pi) / 360
 
 def RoombaDistanceToCm(dist):
     # Distance in cm
