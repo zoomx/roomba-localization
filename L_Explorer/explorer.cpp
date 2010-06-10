@@ -39,8 +39,6 @@
 #define millis16() ((millis() & 0xFFFF))
 
 
-
-
 // Roomba Defs -- Probably want to move these...
 #define DRIVE_SPEED		250 // How fast the Roomba moves mm/sec
 #define TURN_SPEED		100
@@ -89,9 +87,17 @@ void rotate_roomba(int16_t angle)
 
 	// TODO: May need to change this so it stops within a certain error.
 	// Example: Desired Angle 33 -- it reads 32. Currently, it will not stop.
-	while (abs(Roomba_GetTotalAngle()) < abs(angle))
+	while (abs(Roomba_GetTotalAngle()) < abs(angle) && abs(angle - Roomba_GetTotalAngle()) > 2)
 	{
-		delay(25);
+		if((abs(angle) - abs(Roomba_GetTotalAngle())) < 7)
+		{
+			delay(25);
+		}
+		else
+		{
+			delay(100);
+		}
+
 		Roomba_UpdateSensorPacket(CHASSIS_SENSORS, &roomba_sensors);
 	}
 }
@@ -133,8 +139,6 @@ int main()
 	digitalWrite(powerPin, HIGH);
 	_delay_ms(100);
 
-
-
 	// enable interrupts
 	sei();
 	Roomba_Init(0);
@@ -171,7 +175,7 @@ int main()
 				{
 					start = millis16();
 					uint8_t attempts = 0;
-					// TODO: Need to stop after several attempts
+					// Need to stop after several attempts
 					while (attempts < 3 && Sonar_GetState() != OUTPUT_READY)
 					{
 						if (millis16() - start > 1000)
@@ -204,7 +208,7 @@ int main()
 					if (attempts >= 3){beacon_distances[i] = -1;}
 					else{
 						// TODO: the error changes if the confirmation packet was retransmitted, might be able to detect.
-						beacon_distances[i] = Sonar_GetDistance(-15);
+						beacon_distances[i] = Sonar_GetDistance(-19);
 					}
 					//snprintf(output, sizeof(output), "Dist: %d\n\r", beacon_distances[i]);
 					//Serial.print(output);
