@@ -72,6 +72,7 @@ class UartCLI(cmd.Cmd):
 		
 	def do_exit(self, args):
 		#@todo: Signal or leave message for UartMain process
+		sharedMem[exitPoint] = '\x01'
 		sys.exit(1)
 	
 	def help_move(self):
@@ -121,7 +122,7 @@ class UartCLI(cmd.Cmd):
 	
 	def help_wait(self):
 		print 'syntax: wait <delay>',
-		print '-- Wait approximately <delay> milliseconds.'
+		print '-- Wait approximately <delay> in milliseconds.'
 	
 	def do_wait(self, arg):
 		wait_time = 0
@@ -133,19 +134,25 @@ class UartCLI(cmd.Cmd):
 			return
 	
 		print wait_time
-		sleep(wait_time)
+		time.sleep(wait_time)
 	
 	# Shortcuts
 	do_quit = do_exit
 	help_quit = help_exit
 	do_bye = do_exit
 	help_bye = help_exit
-	do_eof = do_exit
+	do_EOF = do_exit
+	help_EOF = help_exit
 
 
 def main():
-	CLI = UartCLI()
-	CLI.cmdloop()
-
+	try:
+		CLI = UartCLI()
+		CLI.cmdloop()
+	except KeyboardInterrupt:
+		CLI.do_exit('')	
+	except:
+		raise
+	
 if __name__ == "__main__":
 	main();

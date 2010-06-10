@@ -46,13 +46,17 @@ def init():
 	global ser
 	global childProcess
 	
+	# Clean the exit flag.
+	sharedMem[exitPoint] = '\x00'
+	
+	# Attempt to open the COM port
 	try:
 		ser = serial.Serial(serialPort, baudRate, timeout=0)
 	except:
 		logging.exception( 'Cannot open Port: "%d"' %(serialPort + 1) )
 		exit()
 	
-	
+	# Log initial information.
 	logging.info( '-' * 50 )
 	logging.info( 'Starting...' )
 	logging.info( 'Device:\t\t\t' + str(ser.name) )
@@ -69,7 +73,15 @@ def exit():
 	'''
 	
 	'''
+	# Close COM Port
+	# Assumes that if there is a problem closing COM port, COM port was never opened.
+	try:
+		ser.close()
+	except:
+		pass
+	
 	# kill child
+	sharedMem[exitPoint] = '\x01'
 	print "EXITING..."
 	sys.exit()
 
@@ -132,11 +144,15 @@ def main():
 						logging.debug( "SE: " + str(dat) )
 						ser.write(dat) # Write the packet to uart
 					time.sleep(0.1)
-			
+					
+			if sharedMem[exitPoint] == '\x01':
+				exit()
+	except KeyboardInterrupt:
+		pass
 	except:
 		raise
 	finally:
-		ser.close()
+		exit()
 
 if __name__ == "__main__":
 	main();

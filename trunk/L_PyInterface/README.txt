@@ -1,11 +1,22 @@
-This works on Windows.
+--------------------------------------
+Author: River Allen
+Contact: riverallen@gmail.com
+Date: June 08 2010
+--------------------------------------
 
-You need to install python 2.6 (2.4+ probably works) and pySerial.
+This is known to work on Windows Vista.
+
+You need to install python 2.6 (2.4+ probably works) and pySerial (can be found here: 
+http://sourceforge.net/projects/pyserial/files/).
 
 Run uartMain.py.
-I would recommend running this in command prompt (you can see errors if program crashes).
+I would recommend running this in command prompt (you can see errors if program crashes). How
+to do this:
+ - Start -> Run -> type 'cmd'
+ - use 'cd' to navigate to the workspace directory of this project
+ - type 'python uartMain.py'
 
-I have not implemented a clean exit yet, so just use Ctrl + C.
+I have not implemented the cleanest exit yet, so just use Ctrl + C.
 
 Change globalConfig for your needs. If you cannot connect to a device that is plugged in:
  - Did not change globalConfig

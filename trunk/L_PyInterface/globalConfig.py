@@ -25,3 +25,5 @@ logDateFormat = '%d %b %Y %H:%M:%S'
 # Shared Memory (For the IPC of input and output)
 #===============================================================================
 sharedMem = mmap.mmap(0, 16384, "UARTSharedMemory")
+# For IPC exiting (not the prettiest method, but I cannot SIGTERM the other process for some reason).
+exitPoint = 9382            
