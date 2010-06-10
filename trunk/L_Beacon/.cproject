@@ -15,7 +15,7 @@
 </extensions>
 </storageModule>
 <storageModule moduleId="cdtBuildSystem" version="4.0.0">
-<configuration artifactName="L_Sonar" buildArtefactType="de.innot.avreclipse.buildArtefactType.app" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=de.innot.avreclipse.buildArtefactType.app" description="" id="de.innot.avreclipse.configuration.app.debug.487303890" name="Debug" parent="de.innot.avreclipse.configuration.app.debug">
+<configuration artifactName="L_Beacon" buildArtefactType="de.innot.avreclipse.buildArtefactType.app" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=de.innot.avreclipse.buildArtefactType.app" description="" id="de.innot.avreclipse.configuration.app.debug.487303890" name="Debug" parent="de.innot.avreclipse.configuration.app.debug">
 <folderInfo id="de.innot.avreclipse.configuration.app.debug.487303890." name="/" resourcePath="">
 <toolChain id="de.innot.avreclipse.toolchain.winavr.app.debug.12136274" name="AVR-GCC Toolchain" superClass="de.innot.avreclipse.toolchain.winavr.app.debug">
 <option id="de.innot.avreclipse.toolchain.options.toolchain.objcopy.flash.app.debug.191567783" name="Generate HEX file for Flash memory" superClass="de.innot.avreclipse.toolchain.options.toolchain.objcopy.flash.app.debug" value="true" valueType="boolean"/>
