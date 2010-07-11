@@ -13,7 +13,7 @@
 #include "radio/packet.h"
 #include "sonar/sonar.h"
 
-#define STATION_ID 0x01		// station identifier can be 0 to 254 inclusive
+#define STATION_ID 0x03		// station identifier can be 0 to 254 inclusive
 
 typedef enum _rs
 {
@@ -51,6 +51,8 @@ int main()
 	Radio_Init();
 	Radio_Configure(RADIO_2MBPS, RADIO_HIGHEST_POWER);
 	Radio_Configure_Rx(RADIO_PIPE_0, sensor_address, ENABLE);
+
+	digitalWrite(ledPin, HIGH);
 
 	for (;;)
 	{

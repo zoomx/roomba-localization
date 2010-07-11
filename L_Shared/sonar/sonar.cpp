@@ -78,7 +78,7 @@ ISR(TIMER1_CAPT_vect)
 		// set ICP1 to trigger again on falling edge
 		ICP1_DETECT_FALLING_EDGE();
 		sonar_state = WAITING_FOR_PULSE_END;
-		digitalWrite(13, HIGH);
+		//digitalWrite(13, HIGH);
 	}
 	else if (sonar_state == WAITING_FOR_PULSE_END)
 	{
@@ -87,6 +87,6 @@ ISR(TIMER1_CAPT_vect)
 		// next time ICP1 is needed it will be to detect a rising edge
 		ICP1_DETECT_RISING_EDGE();
 		sonar_state = OUTPUT_READY;
-		digitalWrite(13, LOW);
+		//digitalWrite(13, LOW);
 	}
 }
