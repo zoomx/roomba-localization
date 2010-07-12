@@ -58,7 +58,7 @@ uint8_t base_address[RADIO_ADDRESS_LENGTH] = {0xB4, 0xB4, 0xB4, 0xB4, 1};
 
 uint8_t radioPowerPin = 9;
 uint8_t ledPin = 13;
-#define flipLED() digitalWrite(ledPin, !digitalRead(ledPin));
+#define flip_LED() digitalWrite(ledPin, !digitalRead(ledPin));
 
 #define TOTAL_BEACONS	3	// can't fit more than 12 beacons in log packet
 int16_t beacon_distances[TOTAL_BEACONS];
@@ -117,7 +117,7 @@ int main()
 				packet.timestamp = millis();
 				packet.payload.log.angle = Roomba_GetTotalAngle();
 				packet.payload.log.distance = Roomba_GetTotalDistance();
-				memcpy(packet.payload.log.beacon_distance, beacon_distances, TOTAL_BEACONS);
+				memcpy(packet.payload.log.beacon_distance, beacon_distances, sizeof(int16_t)*TOTAL_BEACONS);
 				Radio_Transmit(&packet, RADIO_WAIT_FOR_TX);
 			}
 			else
@@ -140,6 +140,7 @@ void radio_rxhandler(uint8_t pipe_number)
 	}
 	else
 	{
+		flip_LED(); // delete me
 		radio_state = BASE_PACKET_READY;
 	}
 }

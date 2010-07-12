@@ -16,7 +16,6 @@ void read_serial(uint8_t);
 void echo_serial();
 void send_packet();
 void read_packet(uint8_t);
-void flip_led();
 
 #define BAUD_RATE	100000
 #define BUF_LEN		64
@@ -24,7 +23,8 @@ void flip_led();
 int ledPin = 13; // LED connected to digital pin 13
 int powerPin = 6;
 
-#define flipLED() digitalWrite(ledPin, !digitalRead(ledPin))
+#define flip_LED() digitalWrite(ledPin, !digitalRead(ledPin))
+#define TOTAL_BEACONS	3	// can't fit more than 12 beacons in log packet
 
 uint8_t roomba_address[RADIO_ADDRESS_LENGTH] = {0xB4, 0xB4, 0xB4, 0xB4, 0xFF};
 uint8_t base_address[RADIO_ADDRESS_LENGTH] = {0xB4, 0xB4, 0xB4, 0xB4, 1};
@@ -89,13 +89,17 @@ void read_packet()
 	memcpy(&inf_packet, &packet.payload.log, sizeof(inf_packet));
 
 	Serial.print("IPkt ");
-	snprintf(output, sizeof(output), "%d %d", inf_packet.angle, inf_packet.distance);
-	Serial.println(output);
-	//for each beacon
-	// snprintf(output, sizeof(output), "%d %d", inf_packet.angle, inf_packet.distance);
+	snprintf(output, sizeof(output), "%d %d |", inf_packet.angle, inf_packet.distance);
+	Serial.print(output);
+	int i;
+	for (i = 0; i < TOTAL_BEACONS; ++i)
+	{
+		snprintf(output, sizeof(output), "%d ", inf_packet.beacon_distance[i]);
+		Serial.print(output);
+	}
 	// println(output)
-	snprintf(output, sizeof(output), "%d", inf_packet.beacon_distance[0]);
-	Serial.println(output);
+	//snprintf(output, sizeof(output), "%d", inf_packet.beacon_distance[0]);
+	Serial.println();
 }
 
 void send_packet()
@@ -104,9 +108,8 @@ void send_packet()
 	memcpy(&packet.payload.move, &uart_command, sizeof(uart_command));
 	Radio_Transmit(&packet, RADIO_WAIT_FOR_TX);
 
-	flipLED();
+	flip_LED();
 }
-
 
 
 void loop()
@@ -127,7 +130,7 @@ void loop()
 	if(radio_received_flag)
 	{
 		radio_received_flag = 0;
-		flipLED();
+		flip_LED();
 		// Copy the received packet from the radio to the local data structure
 		Radio_Receive(&packet);
 		if(packet.type == LOG_DATA)
