@@ -46,7 +46,7 @@ typedef struct _ld
 {
 	int16_t angle;				 /// Angle Roomba moved (in Roomba format)
 	int16_t distance;			 /// Distance Roomba moved (in mm)
-	uint16_t beacon_distance[12];/// Distance from Roomba to each beacon
+	int16_t beacon_distance[12];/// Distance from Roomba to each beacon
 } pf_log_data_t;
 
 /*****							Add format structures to the union							*****/
