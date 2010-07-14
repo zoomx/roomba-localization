@@ -53,6 +53,21 @@ class Move_Explorer(object):
         self._waypoints.append([x, y])
     
     
+    def translate(self, explorer_pos):
+        explorer_angle = explorer_pos[2] %(2 * np.pi)
+        return util.affine_transform(explorer_angle, self.translation_movement.vec, 
+                                         self.translation_movement.cov)
+    
+    def right_rotate(self, explorer_pos):
+        explorer_angle = explorer_pos[2] %(2 * np.pi)
+        return util.affine_transform(explorer_angle, self.right_rotation_movement.vec, 
+                                         self.right_rotation_movement.cov)
+    
+    def left_rotate(self, explorer_pos):
+        explorer_angle = explorer_pos[2] %(2 * np.pi)
+        return util.affine_transform(explorer_angle, self.left_rotation_movement.vec, 
+                                         self.left_rotation_movement.cov)
+        
     def get_current_waypoints(self):
         return self._waypoints
     
@@ -92,16 +107,15 @@ class Move_Explorer(object):
             # Turn Left
             if ((angle_diff > 0 and angle_diff <= np.pi) or 
                 (angle_diff > -2*np.pi and angle_diff <= -np.pi)):
-                vec, cov = util.affine_transform(explorer_angle, self.left_rotation_movement.vec, 
-                                         self.left_rotation_movement.cov)
+                vec, cov = self.left_rotate(explorer_pos)
+                id = 2
             # Turn Right
             else:
-                vec, cov = util.affine_transform(explorer_angle, self.right_rotation_movement.vec, 
-                                         self.right_rotation_movement.cov)
+                vec, cov = self.right_rotate(explorer_pos)
+                id = 3
         else:
             # Go Straight
-            vec, cov = util.affine_transform(explorer_angle, self.translation_movement.vec, 
-                                         self.translation_movement.cov)
+            vec, cov = self.translate(explorer_pos)
             id = 1
         
         self._movement_history.append(vec)

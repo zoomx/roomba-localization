@@ -1,0 +1,55 @@
+# Created by Octave 3.0.5, Thu Jun 10 09:36:49 2010 PDT <rallen@ubuntu>
+# name: measurement_model
+# type: matrix
+# rows: 50
+# columns: 1
+ 1
+ 1
+ 2
+ 3
+ 4
+ 4
+ 4
+ 4
+ 4
+ 4
+ 4
+ 4
+ 4
+ 4
+ 4
+ 4
+ 4
+ 4
+ 4
+ 4
+ 5
+ 5
+ 5
+ 5
+ 5
+ 5
+ 5
+ 6
+ 6
+ 6
+ 6
+ 6
+ 6
+ 6
+ 6
+ 7
+ 7
+ 7
+ 7
+ 7
+ 7
+ 7
+ 7
+ 7
+ 7
+ 8
+ 8
+ 8
+ 9
+ 10
