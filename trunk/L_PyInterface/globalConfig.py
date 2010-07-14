@@ -2,6 +2,7 @@
 # General Settings
 #===============================================================================
 takeInput = True            # True - Windows only, Will take and send input if T
+plotFilters = False         # Draw plots for the filters
 
 #===============================================================================
 # UART Settings
@@ -20,10 +21,3 @@ logFormat = '%(asctime)s\t%(levelname)-8s\t%(message)s'
 
 # See http://docs.python.org/library/datetime.html#strftime-and-strptime-behavior
 logDateFormat = '%d %b %Y %H:%M:%S'
-
-#===============================================================================
-# Shared Memory (For the IPC of input and output)
-#===============================================================================
-sharedMem = mmap.mmap(0, 16384, "UARTSharedMemory")
-# For IPC exiting (not the prettiest method, but I cannot SIGTERM the other process for some reason).
-exitPoint = 9382            

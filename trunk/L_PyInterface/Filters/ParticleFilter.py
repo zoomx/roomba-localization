@@ -14,6 +14,7 @@ import numpy as np
 import scipy.stats as stats
 import util
 import Filter
+import Sensor
 
 global pf
 pf = None
@@ -67,7 +68,14 @@ class ParticleFilter(Filter.Filter):
             self.particles[L,:] = self.particles[L,:] + transition_sample
         
         
-    def observation(self, observation, obs_mean, obs_cov, x_obs, y_obs):
+    def observation(self, obs, sensor):
+        if isinstance(sensor, Sensor.BeaconSensor):
+            self._observation_beacon(obs, sensor) 
+        elif isinstance(sensor, Sensor.CompassSensor):
+            self._observation_compass(obs, sensor)
+        
+        
+    def _observation_beacon(self, obs, beacon):
         #=======================================================================
         # Weight samples against observation model
         #=======================================================================
@@ -78,9 +86,9 @@ class ParticleFilter(Filter.Filter):
             # current normalized weight, and the probability of the 
             # evidence (yk|observation) given the current state 
             # (xk(L)|particle(L)).
-            distance = np.sqrt((x_obs-self.particles[L,0])**2 + (y_obs-self.particles[L,1])**2)
-            dis_error = observation - distance
-            self.weight[L] = self.weight[L] * stats.norm.pdf(dis_error, obs_mean, obs_cov)
+            distance = np.sqrt((beacon.x_pos-self.particles[L,0])**2 + (beacon.y_pos-self.particles[L,1])**2)
+            dis_error = obs - distance
+            self.weight[L] = self.weight[L] * stats.norm.pdf(dis_error, beacon.mean, beacon.variance)
         
         #=======================================================================
         # Resample
@@ -107,6 +115,9 @@ class ParticleFilter(Filter.Filter):
             #index_set = unique( index );
             self.particles[index_set,:]
             self.particles = new_particles
+    
+    def _observation_compass(self, observation, compass):
+        raise NotImplementedError
     
     def get_explorer_pos(self):
         return self.particles.mean(axis=0)

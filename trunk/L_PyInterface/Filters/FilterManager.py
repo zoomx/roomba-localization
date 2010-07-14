@@ -1,18 +1,24 @@
-from Filters import Filter, KalmanFilter, ParticleFilter
+'''
+FilterManager.py
+@author: River Allen
+@date: July 7, 2010
+'''
+
+import Filter, KalmanFilter, ParticleFilter
 from warnings import warn
-import Filters
 
 import threading
+import Sensor
+import numpy as np
+
 
 class FilterManagerException(Exception):
     pass
 
 class FilterManager():
-    def __init__(self, origin_pos, origin_cov, use_gui=True, use_obs=True, 
+    def __init__(self, origin_pos, origin_cov, use_obs=True, 
                  run_kf=True, run_pf=True, total_particles=1000):
         self._filters = {}
-        
-        self.use_gui = use_gui
         
         # Do not observe()
         self.use_obs = use_obs
@@ -20,8 +26,7 @@ class FilterManager():
         if run_pf:
             self.add_filter(ParticleFilter.ParticleFilter(origin_pos, origin_cov))
         if run_kf:
-            pass
-            #self.add_filter(KalmanFilter.KalmanFilter(origin_pos, origin_cov))
+            self.add_filter(KalmanFilter.KalmanFilter(origin_pos, origin_cov))
         
         if self._filters is {}:
             warn('No Filters are running.')
@@ -37,31 +42,23 @@ class FilterManager():
             draw_methods.update({filt.name:filt.draw})
         return draw_methods
     
-    def draw(self, cr):
-        if not self.use_gui:
-            return
-        for filt in self._filters.values():
-            filt.draw(cr)
-            
     def move(self, transition_vec, transition_cov):
         for filt in self._filters.values():
             filt.move(transition_vec, transition_cov)
     
-    def observation(self, obs, obs_mean, obs_cov, x_obs, y_obs):
+    def observation(self, obs, sensor):
         if not self.use_obs:
             return
         for filt in self._filters.values():
-            filt.observation(obs, obs_mean, obs_cov, x_obs, y_obs)
+            filt.observation(obs, sensor)
 
     def get_explorer_pos_mean(self):
         pos = []
         for filt in self._filters.values():
-            #print 'Getting pos for %s' %(filt.name)
             pos.append(filt.get_explorer_pos())
         
         mean_pos = np.array(pos).mean(axis=0)
-        #print mean_pos
-        return mean_pos 
+        return mean_pos
 
 class TestGUI():
     
@@ -83,7 +80,7 @@ class TestGUI():
         import gtk
         import gobject
         
-        self.init_pos = [100, 480]
+        self.init_pos = [50, 475]
         self.transform_mat = cairo.Matrix(1.5, 0, 0, -1.5, self.init_pos[0], self.init_pos[1])
         
         self._filter_draw_methods = filter_draw_methods
@@ -93,7 +90,7 @@ class TestGUI():
         self.window.connect('delete_event', self.delete_event)
         self.window.connect('destroy', self.destroy)
         self.window.set_title('Roomba Localization')
-        self.window.set_size_request(500, 500)
+        self.window.set_size_request(500, 600)
 
         self.area = gtk.DrawingArea()
         self.area.add_events(gtk.gdk.BUTTON_PRESS_MASK)
@@ -101,12 +98,16 @@ class TestGUI():
         self.area.connect("expose-event", self._expose_cb)
         self.area.connect('button_press_event', self._click_cb)
         
-        self.window.add(self.area)
+        self.map_frame = gtk.Frame('Map')
+        self.map_frame.add(self.area)
+        
+        #self.window.add(self.area)
+        self.window.add(self.map_frame)
         self.window.show_all()
         
         self._click_positions = []
         
-        gobject.timeout_add(1000, self._update_clock)
+        gobject.timeout_add(500, self._update_clock)
     
     def add_draw_method(self, meth):
         self._draw_methods.append(meth)
@@ -300,14 +301,17 @@ class TestThread(threading.Thread):
         pthjoin = os.path.join
         
         (translation_model, translation_data, rotation_model, 
-         rotation_data, measurement_model, measurement_data, beacons) = models.load_data(pthjoin('Data','001'))
+         rotation_data, measurement_model, measurement_data, beacons) = models.load_data(pthjoin('..','Data','001'))
     
         # Kluge fix --  need to fix the .mat file
         measurement_model = measurement_model[0]
-        
+        sm = Sensor.SensorManager()
         # Create Beacons
         # Need to add draw beacon functions
         total_beacons = beacons.shape[0]
+        for i in range(total_beacons):
+            sm.add_sensor(Sensor.BeaconSensor(measurement_model[0], measurement_model[1],
+                                                      [0,10000], beacons[i][0], beacons[i][1]))
         
         # Move Straight: Vector based on Motion Model measurements
         #translation_vec = [dist_hypot, dist_hypot, translation_model[2,0]]
@@ -338,16 +342,17 @@ class TestThread(threading.Thread):
             import cairo
             #cr.select_font_face('arial')
             cr.set_font_size(15)
-            cr.set_font_matrix(cairo.Matrix(2, 0, 0, -2, 0, 0))
             
+            #cr.set_font_matrix(cairo.Matrix(1, 0, 0, -1, 0, 0))
+            cr.new_path()
             def draw_waypoints(cr, i, waypoints, rgba_color):
                 for pnt in waypoints:
                     cr.set_source_rgba(*rgba_color)
                     cr.arc(pnt[0], pnt[1], 6, 0, 2 * np.pi)
                     cr.stroke()
                     cr.move_to(pnt[0], pnt[1])
-                    cr.show_text(str(i))
-                    i += 1
+                    #cr.show_text(str(i))
+                    #i += 1
             
             waypoints = me.get_old_waypoints()[-2:]
             draw_waypoints(cr, -2, waypoints, (0.5, 0, 0, 0.8))
@@ -356,7 +361,14 @@ class TestThread(threading.Thread):
             if len(waypoints) > 1:
                 draw_waypoints(cr, 2, waypoints[1:], (0, 0, 0.5, 0.8))
                 
+            cr.new_path()
+            
+        #=======================================================================
+        # Add Drawing Methods
+        #=======================================================================
         self.tg.add_draw_method(draw_all_waypoints)
+        for beacon in sm.sensors_by_type['Beacon']:
+            self.tg.add_draw_method(beacon.draw)
         
         while True:
             waypoints = []
@@ -388,11 +400,10 @@ class TestThread(threading.Thread):
                     # Doing it while it is stationary / rotating will make it too 
                     # confident.
                     if transition_mov.id == 1:
-                        self.fm.observation(obs_dis, measurement_model[0], measurement_model[1], 
-                                        beacons[j][0], beacons[j][1])
+                        
+                        self.fm.observation(obs_dis, sm.sensors_by_type['Beacon'][j])
                         
             time.sleep(0.1)
-    
             
     
     def run(self):
@@ -413,7 +424,7 @@ if __name__ == '__main__':
     # Need to call this or gtk will never release locks
     gobject.threads_init()
     
-    fm = FilterManager(origin_pos, origin_cov, use_gui=False)
+    fm = FilterManager(origin_pos, origin_cov, use_gui=True, run_pf=False)
     tg = TestGUI(fm.get_draw())
     
     #tt = TestThread(fm, tg, auto=True)
