@@ -224,7 +224,6 @@ static void configure_registers()
 void Radio_Init()
 {
 	transmit_lock = 0;
-
 	// disable radio during config
 	CE_LOW();
 
@@ -435,6 +434,12 @@ uint8_t Radio_Drop_Rate()
 	wh = (16 - weight) * 100;
 	wh /= 16;
 	return wh;
+}
+
+void Radio_Flush()
+{
+	send_instruction(FLUSH_TX, NULL, NULL, 0);
+	send_instruction(FLUSH_RX, NULL, NULL, 0);
 }
 
 // Interrupt handler
