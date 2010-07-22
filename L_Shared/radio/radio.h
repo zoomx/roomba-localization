@@ -18,8 +18,8 @@
 #include <stddef.h>
 #include <string.h>
 #include <avr/io.h>
-//#include <avr/interrupt.h>
-//#include "util/delay.h"
+#include <avr/interrupt.h>
+#include "util/delay.h"
 #include "nRF24L01.h"
 #include "packet.h"
 #include "spi.h"
@@ -146,6 +146,15 @@ uint8_t Radio_Transmit(radiopacket_t* payload, RADIO_TX_WAIT wait);
  */
 RADIO_RX_STATUS Radio_Receive(radiopacket_t* buffer);
 
-uint8_t Radio_Drop_Rate();
+/**
+ * Calculate the radio's transmit success rate over the last 16 packets.  The return value is the percentage of packets
+ * that were transmitted successfully, ranging from 0 to 100.
+ */
+uint8_t Radio_Success_Rate();
+
+/**
+ * Flush the radio's Rx and Tx FIFOs.
+ */
+void Radio_Flush();
 
 #endif /* RADIO_H_ */
