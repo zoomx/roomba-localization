@@ -62,8 +62,8 @@ class FilterCLI(UARTCLI.UARTCLI):
         print angle, distance
         roombaAngle = int( utilRoomba.DegreesToRoombaAngle(angle) )
         roombaDistance = int( utilRoomba.CmToRoombaDistance(distance) )
-        fmt = 'hh' # Unsigned Byte / Short / Short
-        self._commands.append(('move', fmt, struct.pack(fmt, roombaAngle, roombaDistance)))
+        fmt = 'hhh' # Unsigned Byte / Short / Short
+        self._input.append(('move', fmt, struct.pack(fmt, 0, roombaAngle, roombaDistance)))
     
     def help_stop(self):
         print 'syntax: stop',
@@ -94,7 +94,7 @@ class FilterCLI(UARTCLI.UARTCLI):
             self.help_pos()
             return
     
-        self._commands.append(('pos', x_pos, y_pos))
+        self._input.append(('pos', x_pos, y_pos))
     
     def help_wait(self):
         print 'syntax: wait <delay>',
@@ -109,5 +109,7 @@ class FilterCLI(UARTCLI.UARTCLI):
             self.help_wait()
             return
     
-        print wait_time
         time.sleep(wait_time)
+        
+    def emptyline(self):
+        self.do_nothing('')

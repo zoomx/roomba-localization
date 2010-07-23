@@ -24,17 +24,24 @@ int ledPin = 13; // LED connected to digital pin 13
 int powerPin = 6;
 
 #define flip_LED() digitalWrite(ledPin, !digitalRead(ledPin))
+#define millis16() (millis() & 0xFFFF)
+
 #define TOTAL_BEACONS	3	// can't fit more than 12 beacons in log packet
 
 uint8_t roomba_address[RADIO_ADDRESS_LENGTH] = {0xB4, 0xB4, 0xB4, 0xB4, 0xFF};
 uint8_t base_address[RADIO_ADDRESS_LENGTH] = {0xB4, 0xB4, 0xB4, 0xB4, 1};
 radiopacket_t packet;
-uint8_t radio_received_flag = 0;
+volatile uint8_t radio_received_flag = 0;
+volatile uint8_t sent_time = 0;
+volatile uint8_t sent_packet_flag = 0;
+uint8_t current_msg_seq = 0;
+
 
 // Used by Serial
 uint8_t data[BUF_LEN];
 char output[BUF_LEN];
 pf_move_roomba_t uart_command;
+
 
 void setup()
 {
@@ -79,7 +86,12 @@ void read_serial(uint8_t len)
 
 void echo_serial()
 {
-	snprintf(output, sizeof(output), "RE: %d|%d", uart_command.angle, uart_command.distance);
+	Serial.print("RE: ");
+	Serial.print(data[0]);
+	Serial.print(data[1]);
+	Serial.print(data[2]);
+	Serial.print(data[3]);
+	snprintf(output, sizeof(output), "RE: %d %d", uart_command.angle, uart_command.distance);
 	Serial.println(output);
 }
 
@@ -87,6 +99,13 @@ void read_packet()
 {
 	pf_log_data_t inf_packet;
 	memcpy(&inf_packet, &packet.payload.log, sizeof(inf_packet));
+
+	if (inf_packet.seq != current_msg_seq)
+	{
+		snprintf(output, sizeof(output), "Wrong Seq: %d", inf_packet.seq);
+		Serial.println(output);
+		return;
+	}
 
 	Serial.print("IPkt ");
 	snprintf(output, sizeof(output), "%d %d |", inf_packet.angle, inf_packet.distance);
@@ -100,13 +119,33 @@ void read_packet()
 	// println(output)
 	//snprintf(output, sizeof(output), "%d", inf_packet.beacon_distance[0]);
 	Serial.println();
+	sent_packet_flag = 0;
+	++current_msg_seq;
 }
 
 void send_packet()
 {
 	packet.type = MOVE_ROOMBA;
 	memcpy(&packet.payload.move, &uart_command, sizeof(uart_command));
-	Radio_Transmit(&packet, RADIO_WAIT_FOR_TX);
+	packet.payload.move.seq = current_msg_seq;
+	uint8_t result = Radio_Transmit(&packet, RADIO_WAIT_FOR_TX);
+	if (result != RADIO_TX_SUCCESS)
+	{
+		uint8_t retry_counter;
+		for (retry_counter = 0; retry_counter < 10; ++retry_counter)
+		{
+			//Serial.println("Retransmit.");
+			delay(500);
+
+			result = Radio_Transmit(&packet, RADIO_WAIT_FOR_TX);
+			if (result == RADIO_TX_SUCCESS)
+			{
+				break;
+			}
+		}
+		Serial.println("Failed to send packet.");
+		return;
+	}
 
 	flip_LED();
 }
@@ -114,32 +153,58 @@ void send_packet()
 
 void loop()
 {
+
 	// Check For new user commands
-	if(Serial.available())
+	if(Serial.available() >= sizeof(pf_move_roomba_t))
 	{
-		uint8_t incoming_length = Serial.available();
+		//uint8_t incoming_length = Serial.available();
 
 		// Read the data off the serial into packet
-		read_serial(incoming_length);
+		read_serial(sizeof(pf_move_roomba_t));
 		// For debugging purposes. Write back to PC to ensure it is getting it correctly.
 		echo_serial();
 		// Send the packet off to the Roomba
 		send_packet();
+		//Serial.println("SENT PACKET");
 	}
 
 	if(radio_received_flag)
 	{
 		radio_received_flag = 0;
-		flip_LED();
 		// Copy the received packet from the radio to the local data structure
-		Radio_Receive(&packet);
+		flip_LED();
+		uint8_t result = Radio_Receive(&packet);
+		if (result == RADIO_RX_SUCCESS)
+		{
+			//pass
+		}
+		else if (result == RADIO_RX_MORE_PACKETS)
+		{
+			Radio_Flush();
+		}
+		else
+		{
+			snprintf(output, sizeof(output), "Prob w/ pkt %d", result);
+			Serial.println(output);
+			return;
+		}
+
 		if(packet.type == LOG_DATA)
 		{
+
 			// Print out the radio packet (log data)
 			read_packet();
 		}
+		else if(packet.type == MOVE_ERROR)
+		{
+			snprintf(output, sizeof(output), "Error: seq (%d)", packet.type);
+			Serial.println(output);
+		}
+		else
+		{
+			Serial.println("Rec ? Pkt");
+		}
 	}
-	delay(100);
 }
 
 int main(void)

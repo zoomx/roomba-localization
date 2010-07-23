@@ -11,7 +11,7 @@ import numpy as np
 from numpy import linalg
 import Filter
 import Sensor # This should be up a level...(Sensor stuff needs to be put somewhere nicer)
-
+import util
 global KF
 KF = None
 
@@ -52,7 +52,7 @@ class KalmanFilter(Filter.Filter):
             George Kantor + Sanjiv Singh
         
         '''
-        b_angle = np.arccos((sensor.x_pos - self.explorer_pos[0])/obs)
+        b_angle = np.arctan2((sensor.y_pos - self.explorer_pos[1]),(sensor.x_pos - self.explorer_pos[0]))
         x_obs_pos = sensor.x_pos - ((obs)*np.cos(b_angle))
         y_obs_pos = sensor.y_pos - ((obs)*np.sin(b_angle))
         
@@ -60,12 +60,22 @@ class KalmanFilter(Filter.Filter):
         obs_pos = np.array([x_obs_pos, y_obs_pos])
         obs_cov = sensor.observation(obs)
         R = np.array([[obs_cov, 0], [0, 10 * obs_cov]])
+        _,R = util.affine_transform(b_angle, np.array([0,0]), R)
         
-        #print 'OBS Variance:', R
-        
-        K = np.dot(R, linalg.inv((R + self.explorer_cov[:2,:2])))
+        try:
+            K = np.dot(R, linalg.inv((R + self.explorer_cov[:2,:2])))
+        except linalg.LinAlgError:
+            print '-'*50
+            print 'Explorer Pos:', self.explorer_pos
+            print 'Explorer Cov:', self.explorer_cov
+            print 'Obs position:', obs_pos
+            print 'OBS Variance:', R
+            return
         self.explorer_cov[:2,:2] = R - np.dot(K, R)
-        #self.explorer_pos[:2] = obs_pos + np.dot(K, (self.explorer_pos[:2] - obs_pos))
+        self.explorer_pos[:2] = self.explorer_pos[:2] + np.dot(K, (self.explorer_pos[:2] - obs_pos))
+        
+        
+        
         
     
     def _observation_compass(self, obs, sensor):
@@ -80,7 +90,7 @@ class KalmanFilter(Filter.Filter):
         '''
         self._draw_explorer(cr)
         self._draw_heading(cr)
-        #self._draw_error_ellipse(cr)
+        self._draw_error_ellipse(cr)
     
     def _draw_error_ellipse(self, cr):
         '''
@@ -91,7 +101,7 @@ class KalmanFilter(Filter.Filter):
         cr.set_source_rgba(0.7, 0, 0, 0.5)
         cr.set_dash([5])
         x_pts, y_pts = self._error_ellipse_points(self.explorer_cov[:2,:2])
-        cr.move_to(self.explorer_pos[0], self.explorer_pos[1])
+        cr.move_to(self.explorer_pos[0], self.explorer_pos[1]-self.explorer_diam)
         for i in range(len(x_pts)):
             cr.rel_line_to(x_pts[i], y_pts[i])
         cr.stroke()
@@ -136,13 +146,24 @@ class KalmanFilter(Filter.Filter):
         y = xy[:,1]
         return x, y
     
+    def _draw_heading_error(self, cr):
+        cr.new_path()
+        cr.set_line_width(1)
+        cr.set_source_rgba(0, 0, 0.5, 0.8)
+        cr.move_to(self.explorer_pos[0], self.explorer_pos[1])
+        angle = self.explorer_pos[2]
+        cr.rel_line_to(self.explorer_diam * np.cos(angle), self.explorer_diam * np.sin(angle))
+        cr.stroke()
+        cr.new_path()
+    
+    
     def get_explorer_pos(self):
         return self.explorer_pos
     
     def step(self, X, P, F, H, B, Q, R, u, z):
         '''
         See the Wikipedia article on the Kalman Filter. 
-        This function is essentially the Kalman Filter.
+        This function, performs the Kalman Filter defined in that article.
         
         First, the prediction phase is computed.
             Xk|k-1 = F*Xk-1 + B*u

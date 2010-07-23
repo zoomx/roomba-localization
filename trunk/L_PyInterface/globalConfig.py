@@ -2,12 +2,11 @@
 # General Settings
 #===============================================================================
 takeInput = True            # True - Windows only, Will take and send input if T
-plotFilters = False         # Draw plots for the filters
 
 #===============================================================================
 # UART Settings
 #===============================================================================
-serialPort = 4              # Uses Array Numbering (i.e. COM1 is '0')
+serialPort = 7              # Uses Array Numbering (i.e. COM1 is '0')
 baudRate = 100000
 
 #===============================================================================
