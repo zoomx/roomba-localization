@@ -6,7 +6,7 @@ June 7, 2010
 @todo: Fix configuration, so it is in a more suitable format (.ini for example)
 @todo: Add a timeout where if no beacon data is received...assume beacon ranges are -1...
 (i.e. go off motion model)
-
+@todo: Determine a way to better merge user input and Move Explorer's movements.
 '''
 
 import threading
@@ -35,7 +35,7 @@ import utilRoomba
 
 class FilterSystemRunner(threading.Thread):
 
-    def __init__(self, serial_port, baud_rate, map_obj, origin_pos, origin_cov, gui=False, 
+    def __init__(self, serial_port, baud_rate, map_obj, origin_pos, origin_cov, gui=None, 
                  simulation=False, run_pf=True, run_kf=True):
         super(FilterSystemRunner, self).__init__()
         self.quit = False
@@ -44,7 +44,7 @@ class FilterSystemRunner(threading.Thread):
         #=======================================================================
         self.cli = FilterCLI.FilterCLI()
         self.ua = UARTSystem.UART(serial_port, baud_rate, take_input=True, cli=self.cli,
-                                  approve=True)
+                                  log=logging, approve=True)
         self.uin = [] # uart input from user
         self.uout = [] # uart output from base/roomba
         
@@ -80,9 +80,12 @@ class FilterSystemRunner(threading.Thread):
         # Movement
         #=======================================================================
         self._new_moves = []
+        self._last_move = None
+        
         
         # Move Straight: Vector based on Motion Model measurements
         translation_vec = self.translation_model[:,0]
+        translation_vec[:2] = np.array([100.4, 4])
         translation_cov = np.cov(self.translation_data.T)
         translation_mov = Movement.Movement(translation_vec, translation_cov)
         
@@ -105,15 +108,16 @@ class FilterSystemRunner(threading.Thread):
         #=======================================================================
         # Map
         #=======================================================================
-        self.map = map
+        self.map_obj = map_obj
         
         #=======================================================================
         # GUI
         #=======================================================================
         self.rg = None
-        if gui:
-            self.rg = roombaGUI.RoombaLocalizationGUI(self.fm.get_draw(), map)
-            
+        if gui is not None:
+            self.rg = gui
+            self.rg.add_filter_draw_method(self.fm.get_draw())
+                
             for beacon in self.sm.sensors_by_type['Beacon']:
                 self.rg.add_draw_method(beacon.draw)
             
@@ -160,7 +164,6 @@ class FilterSystemRunner(threading.Thread):
             cr.new_path()
     
     def _process_out(self, out):
-        #print 'OUTPUT:', out
         if 'IPkt' in out:
             sensor_data = out[5:]
             sensor_data.split()
@@ -174,9 +177,13 @@ class FilterSystemRunner(threading.Thread):
                 raise RuntimeError, 'No. of beacon ranges does not match No. of beacons.'
             
             print 'Move Data:', move_data
+            if self._last_move is not None:
+                # Move filters
+                self.fm.move(self._last_move[0], self._last_move[1])
             
-            for j in range(len(beacon_ranges)):
-                self.fm.observation(beacon_ranges[j], self.sm.sensors_by_type['Beacon'][j])
+                # Add in observational data
+                for j in range(len(beacon_ranges)):
+                    self.fm.observation(beacon_ranges[j], self.sm.sensors_by_type['Beacon'][j])
             
             print 'Beacon Ranges:', beacon_ranges
             print 'Estimated Explorer Position:', self.fm.get_explorer_pos_mean()
@@ -184,9 +191,13 @@ class FilterSystemRunner(threading.Thread):
             return True
         elif 'INITIAL' in out:
             return True
+        elif 'Fail' in out:
+            print 'Move was unsuccessful.'
+            return True
         else:
-            # if out_data was split up from line before...combine it 
-            return False
+            # if out_data was split up from line before...combine it
+            #@change
+            return None
     
     def _process_in(self, inp):
         cmd = inp[0]
@@ -194,7 +205,7 @@ class FilterSystemRunner(threading.Thread):
         if cmd == 'move':
             # This is the iffy part...Essentially need to deal with motion model moves
             # and moves made by a human user.
-            angle, distance = struct.unpack(inp[1], inp[2])
+            _, angle, distance = struct.unpack(inp[1], inp[2])
 
             move = None            
             if angle == 0 and distance == utilRoomba.CmToRoombaDistance(100):
@@ -211,23 +222,25 @@ class FilterSystemRunner(threading.Thread):
                 # Human, non-motion model movement...should not affect filters.
                 pass
             
-            if move is not None:
-                # Move filters
-                self.fm.move(move[0], move[1])
             
+            # Store the movement made. Only update the filters' positions with the movement
+            # after the roomba has sent the confirmation (in _process_out)
+            self._last_move = move
+        
             self._new_moves.append(inp[2])
         elif cmd == 'pos':
             print 'POS:', inp[1], inp[2]
             self.me.move_to(inp[1], inp[2])
+            print 'Current Waypoints:', self.me.get_current_waypoints()
             
     
     def _convert_move_id_to_move_cmd(self, id):
         if id == 1:
-            return 'move 0 100\n'
+            return '0 100\n'
         if id == 2:
-            return 'move 10 0\n'
+            return '10 0\n'
         if id == 3:
-            return 'move -10 0\n'
+            return '-10 0\n'
         
     
     def run(self):
@@ -236,12 +249,15 @@ class FilterSystemRunner(threading.Thread):
         #=======================================================================
             
         self.ua.start()
+        
         if self.rg is not None:
             self.rg.start()
+            
         
         waypoints = []
         allow_move = True # only allow movement after beacon readings have come in.
         while not self.quit:
+            
             # Check if any threads have exited
             if self.ua.quit or (self.rg is not None and self.rg.quit):
                 print 'UART or GUI has quit.'
@@ -261,15 +277,15 @@ class FilterSystemRunner(threading.Thread):
             # roomba can perform new move
             self.uout.extend(self.ua.get_output_data())
             if len(self.uout) > 0:
-                allow_move = self._process_out(self.uout.pop(0))
-                
+                result = self._process_out(self.uout.pop(0))
+                if result is not None:
+                    allow_move = result
             
             # Poll uartin
             # Any new movements? --> send to roomba
             self.uin.extend(self.ua.get_input_data())
             if len(self.uin) > 0:
                 self._process_in(self.uin.pop(0))
-            
             
             # Can roomba move?
             if allow_move:
@@ -279,19 +295,16 @@ class FilterSystemRunner(threading.Thread):
                     # send oldest command to base
                     self.ua.add_data_to_write([move_struct])
                     allow_move = False
-                
-            
-                # Poll Movements
-                move = self.me.get_next_move(self.fm.get_explorer_pos_mean())
-                if move is not None:
-                    # Treat the new move as if sending it through the command line
-                    # (why?) -- DRY [Don't Repeat Yourself]
-                    # (cough, cough) this is repeating itself in a different way...
-                    # @todo: Determine a way to better merge user input the Move Explorer
-                    # class movements.
-                    self.cli.cmdqueue.append(self._convert_move_id_to_move_cmd(move.id))
-                    # Need to wait for CLI to process command.
-                    time.sleep(0.2)
+                else:
+                    # Poll Movements
+                    move = self.me.get_next_move(self.fm.get_explorer_pos_mean())
+                    if move is not None:
+                        # This is the most hacked part of the code. I originally wanted
+                        # to send it through the CLI, but it would get stuff in the cmdloop's
+                        # readline(), thus appending move commands to the CLI cmdqueue failed
+                        # because it would not check the cmdqueue until the readline had finished.
+                        self.cli.do_move(self._convert_move_id_to_move_cmd(move.id))
+                        #time.sleep(0.2)
             
             time.sleep(0.1)
         self.exit()
@@ -312,9 +325,10 @@ if __name__ == '__main__':
     log = logging.getLogger()
     log.addHandler(console)
     
-    gobject.threads_init() # Need to do this, or gtk will not let go of lock
+    #gobject.threads_init() # Need to do this, or gtk will not let go of lock
     
     origin_pos = np.array([200,0,np.deg2rad(90)])
+    #origin_pos = np.array([200, 300, np.deg2rad(180)])
     origin_cov = np.eye(3) * 3 # Initial Covariance
     origin_cov[2,2] = 0.02
     
@@ -323,5 +337,14 @@ if __name__ == '__main__':
     #===========================================================================
     # Run
     #===========================================================================
-    sysRunner = FilterSystemRunner(serialPort, baudRate, map_obj, origin_pos, origin_cov, gui=False)
+    gui = False
+    if gui:
+        duh_gui = roombaGUI.RoombaLocalizationGUI(map_obj=map_obj)
+    else:
+        duh_gui = None
+        
+    
+    sysRunner = FilterSystemRunner(serialPort, baudRate, map_obj, origin_pos, origin_cov, gui=duh_gui)
     sysRunner.start()
+    #if gui:
+    #    duh_gui.mainloop()

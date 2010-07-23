@@ -20,6 +20,7 @@ typedef enum _pt
 	CONFIRM_ECHO,	// sonar station replies with confirmation as soon as sonar pulse is transmitted
 	MOVE_ROOMBA,	// base sends a movement command to the explorer
 	LOG_DATA,		// explorer sends distance/angle/beacon readings to the base
+	MOVE_ERROR,		// explorer tells the base that an error with last message or command occurred
 } PACKET_TYPE;
 
 /*****							Construct payload format structures							*****/
@@ -38,16 +39,23 @@ typedef struct _ce
 
 typedef struct _mr
 {
+	uint16_t seq;				/// This was deemed necessary in-order to include some basic flow control
 	int16_t angle; 				/// Angle for the Roomba to move (in Roomba format)
 	int16_t distance;			/// Distance for the Roomba to move straight (in mm)
 } pf_move_roomba_t;
 
 typedef struct _ld
 {
+	uint16_t seq;				/// This was deemed necessary in-order to include some basic flow control
 	int16_t angle;				 /// Angle Roomba moved (in Roomba format)
 	int16_t distance;			 /// Distance Roomba moved (in mm)
-	int16_t beacon_distance[12];/// Distance from Roomba to each beacon
+	int16_t beacon_distance[11];/// Distance from Roomba to each beacon
 } pf_log_data_t;
+
+typedef struct _me
+{
+	uint16_t seq;				/// This was deemed necessary in-order to include some basic flow control
+} pf_move_error_t;
 
 /*****							Add format structures to the union							*****/
 
@@ -61,6 +69,7 @@ typedef union _pf
 	pf_confirm_echo_t confirm;
 	pf_move_roomba_t move;
 	pf_log_data_t log;
+	pf_move_error_t move_error;
 } payloadformat_t;
 
 /*****						Leave the radiopacket_t structure alone.						*****/

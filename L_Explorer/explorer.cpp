@@ -63,6 +63,27 @@ uint8_t ledPin = 13;
 #define TOTAL_BEACONS	3	// can't fit more than 12 beacons in log packet
 int16_t beacon_distances[TOTAL_BEACONS];
 
+uint16_t expected_msg_seq = 0;
+
+void send_packet()
+{
+	uint8_t result = Radio_Transmit(&packet, RADIO_WAIT_FOR_TX);
+	if (result != RADIO_TX_SUCCESS)
+	{
+		Roomba_ConfigStatusLED(AMBER);
+		while (1)
+		{
+			delay(500);
+			result = Radio_Transmit(&packet, RADIO_WAIT_FOR_TX);
+			if (result == RADIO_TX_SUCCESS)
+			{
+				break;
+			}
+		}
+		Roomba_ConfigStatusLED(STATUS_LED_OFF);
+	}
+}
+
 int main()
 {
 	init();
@@ -98,27 +119,58 @@ int main()
 		// Move packet received
 		if (radio_state == BASE_PACKET_READY)
 		{
+
+			//Roomba_ConfigSpotLED(LED_OFF);
+			//Roomba_ConfigStatusLED(STATUS_LED_OFF);
+
 			// Receive and use movement pack
 			radio_state = NO_PACKET;
-			Radio_Receive(&packet);
+			RADIO_RX_STATUS result = Radio_Receive(&packet);
+			if (result == RADIO_RX_SUCCESS)
+			{
+				//pass
+			}
+			else if (result == RADIO_RX_MORE_PACKETS)
+			{
+				Radio_Flush();
+			}
+			else
+			{
+				Roomba_ConfigStatusLED(AMBER);
+			}
 
 			if (packet.type == MOVE_ROOMBA)
 			{
+				if (packet.payload.move.seq == 0)
+				{
+					// Assume that base has restarted.
+					// So we will restart as well.
+					expected_msg_seq = 0;
+				}
+				else if (packet.payload.move.seq != expected_msg_seq)
+				{
+					// Error packet is out of sequence...
+					// Probably need to restart base if this happens.
+					packet.type = MOVE_ERROR;
+					packet.timestamp = millis();
+					packet.payload.move_error.seq = expected_msg_seq;
+					send_packet();
+				}
 				rotate_roomba(packet.payload.move.angle);
 				translate_roomba(packet.payload.move.distance);
 				Roomba_Drive(0, 0); // Stop
-
 				poll_beacons(beacon_distances, TOTAL_BEACONS);
-
 				// Send log message to base
 				Radio_Set_Tx_Addr(base_address);
 
 				packet.type = LOG_DATA;
 				packet.timestamp = millis();
+				packet.payload.log.seq = expected_msg_seq;
 				packet.payload.log.angle = Roomba_GetTotalAngle();
 				packet.payload.log.distance = Roomba_GetTotalDistance();
 				memcpy(packet.payload.log.beacon_distance, beacon_distances, sizeof(int16_t)*TOTAL_BEACONS);
-				Radio_Transmit(&packet, RADIO_WAIT_FOR_TX);
+				send_packet();
+				++expected_msg_seq;
 			}
 			else
 			{
@@ -140,7 +192,6 @@ void radio_rxhandler(uint8_t pipe_number)
 	}
 	else
 	{
-		flip_LED(); // delete me
 		radio_state = BASE_PACKET_READY;
 	}
 }

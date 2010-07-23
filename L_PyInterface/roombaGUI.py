@@ -9,8 +9,9 @@ import pygtk
 import cairo
 import gtk
 import gobject
+import threading
 
-class RoombaLocalizationGUI():
+class RoombaLocalizationGUI(threading.Thread):
     def delete_event(self, widget, data=None):
         print 'Exit GUI!'
         self.quit = True
@@ -24,8 +25,9 @@ class RoombaLocalizationGUI():
         self.window.queue_draw()
         return True
     
-    def __init__(self, filter_draw_methods, map_obj=None):
-        self.quit = True
+    def __init__(self, filter_draw_methods={}, map_obj=None):
+        threading.Thread.__init__(self)
+        self.quit = False
         self.init_pos = [50, 475]
         self.transform_mat = cairo.Matrix(1.5, 0, 0, -1.5, self.init_pos[0], self.init_pos[1])
         
@@ -50,9 +52,9 @@ class RoombaLocalizationGUI():
         #===============================================================================
         if map_obj is None:
             import Map
-            self.map = Map.GridMap()
+            self.map_obj = Map.GridMap()
         else:
-            self.map = map_obj
+            self.map_obj = map_obj
         self.map_frame = gtk.Frame('Map')
         self.map_frame.add(self.area)
         #------------------------------------------------------------------------------ 
@@ -66,6 +68,11 @@ class RoombaLocalizationGUI():
     
     def add_draw_method(self, meth):
         self._draw_methods.append(meth)
+        
+    def add_filter_draw_method(self, meth):
+        print self._filter_draw_methods
+        print meth
+        self._filter_draw_methods.update(meth)
     
     def _click_cb(self, widget, event):
         cr = widget.window.cairo_create()
@@ -85,7 +92,7 @@ class RoombaLocalizationGUI():
         cr.transform(self.transform_mat)
         #cr.paint()
         
-        self.map.draw(cr)
+        self.map_obj.draw(cr)
         
         for draw_meth in self._draw_methods:
             draw_meth(cr)
@@ -114,9 +121,15 @@ class RoombaLocalizationGUI():
         return ret_pos
     
     def mainloop(self):
+        gobject.timeout_add (100, self.check)
         gtk.main()
 
-
+    def check(self):
+        if self.quit:
+            self.destroy(None)
+        
+    
+    run = mainloop
 
 
 

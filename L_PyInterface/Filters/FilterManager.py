@@ -211,10 +211,7 @@ class TestThread(threading.Thread):
         moves = []
         
         explorer_pos = self.fm.get_explorer_pos_mean()
-        while True:
-            if self.quit:
-                print 'Exiting Thread!'
-                return # Defaults -- Do not move.
+        while not self.quit:
             transition_vec = still_vec
             transition_cov = still_cov
             
@@ -424,7 +421,7 @@ if __name__ == '__main__':
     # Need to call this or gtk will never release locks
     gobject.threads_init()
     
-    fm = FilterManager(origin_pos, origin_cov, use_gui=True, run_pf=False)
+    fm = FilterManager(origin_pos, origin_cov, run_pf=False)
     tg = TestGUI(fm.get_draw())
     
     #tt = TestThread(fm, tg, auto=True)

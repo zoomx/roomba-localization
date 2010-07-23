@@ -6,7 +6,8 @@ def affine_transform(angle, vec, covar):
     import numpy as np
     transform = np.array([[np.cos(angle), -np.sin(angle), 0], [np.sin(angle), np.cos(angle), 0],
                           [0, 0, 1]])
-    
+    if vec.shape == (2,) and covar.shape == (2,2):
+        transform = transform[:2,:2]
     transition_vec = np.dot(transform, vec)
     transition_cov = np.dot(np.dot(transform, covar), transform.T)
     return transition_vec, transition_cov

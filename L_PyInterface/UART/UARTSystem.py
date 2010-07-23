@@ -12,6 +12,7 @@ UARTSystem.py
 		be done by implementation)
 @todo: General Housekeeping and cleaning up (everywhere)
 @todo: Fix up everything to do with out-batching (file names...etc)
+@todo: Create a unified logging system.
 #------------------------------------------------------------------------------ 
 '''
 
@@ -25,15 +26,19 @@ import UARTCLI
 #Based off code from:
 #http://eli.thegreenplace.net/2009/07/30/setting-up-python-to-work-with-the-serial-port/
 
+global uart_lock
+uart_lock = None
 
 class UART(threading.Thread):
 	def __init__(self, serial_port, baud_rate, take_input=False, cli=None, 
-				simulation=False, log=None, approve=False):
+				simulation=False, log=None, approve=False, debug=False):
 		'''
 		Read/log data from UART, open an input window, and simulate having UART 
 		(not fully implemented).
 		
-		@param serial_port: The number of the port used by UART.
+		@param serial_port: The number of the port used by UART. Can also use 'auto', which will
+		attempt to open a COM port with the first existent COM port. 'auto' runs through
+		ports 0-20, attempting trying to open them.
 		@type serial_port: int or str
 		
 		@param baud_rate: The baud_rate for the UART connection.
@@ -52,8 +57,7 @@ class UART(threading.Thread):
 		a COM port open and simply read from file.
 		@type simulation: bool
 		
-		@param log: The logger used by UART and UARTOutput. If None, uses 'logging' and assumes 
-		a global logging has been setup. None by default.
+		@param log: The logger used by UART and UARTOutput. If None, no logging is performed. None by default.
 		@type log: Logger
 		'''
 		super(UART, self).__init__()
@@ -61,24 +65,34 @@ class UART(threading.Thread):
 		self.serial_port = serial_port
 		self.baud_rate = baud_rate
 		self.take_input = take_input
-		
 		self.quit = False
+		self.log = log
+		self.debug = debug
 		
-		# Assume global logging has been setup
-		if log is None:
-			self.log = logging
-		else:
-			self.log = log
+		# Locks -- Needed as separate threads can access data.
+		self._input_lock = threading.Lock()
+		self._output_lock = threading.Lock()
+		self._write_lock = threading.Lock()
 		
 		if not self.simulation:
 			# Attempt to open the COM port
-			try:
-				self.ser = serial.Serial(self.serial_port, self.baud_rate, timeout=0)
-			except:
-				self.log.exception( 'Cannot open Port: "%s"' %str(self.serial_port) )
-				self.quit = True
-				raise
-			self.uo = UARTOutput(self.ser)
+			if str(self.serial_port).lower() == 'auto':
+				for i in range(20):
+					self.ser = None
+					try:
+						self.ser = serial.Serial(i, self.baud_rate, timeout=0)
+					except:
+						pass
+					if self.ser is None:
+						self.log.exception( 'Cannot open Port: "%s"' %str(self.serial_port) )
+			else:
+				try:
+					self.ser = serial.Serial(self.serial_port, self.baud_rate, timeout=0)
+				except:
+					self.log.exception( 'Cannot open Port: "%s"' %str(self.serial_port) )
+					self.quit = True
+					raise
+			self.uo = UARTOutput(self.ser, log=self.log, debug=self.debug)
 		else:
 			raise NotImplemented, "Simulation is not implemented."
 		
@@ -98,20 +112,50 @@ class UART(threading.Thread):
 		'''
 		Retrieves received UART data since last called.
 		'''
-		r_data = self._output_data_buffer
-		self._output_data_buffer = []
-		return r_data
+		with self._output_lock:
+			r_data = self._output_data_buffer
+			self._output_data_buffer = []
+			return r_data
+	
+	def set_output_data(self, dat):
+		'''
+		Locks, writes to out buffer, then unlocks.
+		'''
+		with self._output_lock:
+			if type(dat) == list:
+				self._output_lock.extend(dat)
+			else:
+				self._output_lock.append(dat)
 	
 	def get_input_data(self):
 		'''
 		Retrieves all input commands since last called.
 		'''
-		r_data = self._input_data_buffer
-		self._input_data_buffer = []
-		return r_data
+		with self._input_lock:
+			r_data = self._input_data_buffer
+			self._input_data_buffer = []
+			return r_data
+	
+	def set_input_data(self, dat):
+		'''
+		Locks, writes to input buffer, then unlocks.
+		'''
+		with self._input_lock:
+			if type(dat) == list:
+				self._input_data_buffer.extend(dat)
+			else:
+				self._input_data_buffer.append(dat)
 
 	def add_data_to_write(self, cmds):
-		self._write_data_buffer.extend(cmds)
+		with self._write_lock:
+			print 'US137: Kaplah!'
+			print self._write_data_buffer
+			print cmds
+			if type(cmds) == list:
+				self._write_data_buffer.extend(cmds)
+			else:
+				self._write_data_buffer.append(cmds)
+			print self._write_data_buffer
 
 	def exit(self):
 		'''
@@ -165,7 +209,7 @@ class UART(threading.Thread):
 			
 			if self.take_input:
 				# poll for new data from CLI
-				uin_data = self.ui.get_commmands()
+				uin_data = self.ui.get_input()
 				self._input_data_buffer.extend(uin_data)
 				if not self.approve:
 					for uin in uin_data:
@@ -173,7 +217,9 @@ class UART(threading.Thread):
 				
 			if self.approve:
 				if len(self._write_data_buffer) > 0:
-					self.ser.write(self._write_data_buffer.pop(0))
+					with self._write_lock:
+						print 'SE:', self._write_data_buffer[0]
+						self.ser.write(self._write_data_buffer.pop(0))
 			time.sleep(0.1)
 		
 		self.exit()
@@ -184,7 +230,7 @@ class UARTOutput(threading.Thread):
 	@todo: May want to move this to its own file, but can only be used by UART in its current
 	form...
 	'''
-	def __init__(self, ser):
+	def __init__(self, ser, log=None, debug=False):
 		'''
 		@param ser: Open and ready to go serial.
 		@type ser: serial.Serial
@@ -192,6 +238,10 @@ class UARTOutput(threading.Thread):
 		'''
 		super(UARTOutput, self).__init__()
 		self.quit = False
+		self.debug = debug
+		self.log = log
+		self._lock = threading.Lock()
+		
 		
 		# Rewrite the batch log file
 		# @todo: Make this possible to set, but use date+time by default.
@@ -202,12 +252,13 @@ class UARTOutput(threading.Thread):
 		self.ser = ser
 		
 		# Log initial information.
-		logging.info( '-' * 50 )
-		logging.info( 'Starting...' )
-		logging.info( 'Device:\t\t\t' + str(self.ser.name) )
-		logging.info( 'Baud Rate:\t\t' + str(self.ser.baudrate) )
-		print "Hit 'Ctrl + C' or type 'exit' in the input window to exit..."
-		logging.info( '-' * 50 )
+		if self.log is not None:
+			self.log.info( '-' * 50 )
+			self.log.info( 'Starting...' )
+			self.log.info( 'Device:\t\t\t' + str(self.ser.name) )
+			self.log.info( 'Baud Rate:\t\t' + str(self.ser.baudrate) )
+			print "Hit 'Ctrl + C' or type 'exit' in the input window to exit..."
+			self.log.info( '-' * 50 )
 		
 		self._received_data = []
 
@@ -220,9 +271,10 @@ class UARTOutput(threading.Thread):
 		#sys.exit()
 		
 	def get_data(self):
-		ret_data = self._received_data
-		self._received_data = []
-		return ret_data
+		with self._lock:
+			ret_data = self._received_data
+			self._received_data = []
+			return ret_data
 	
 	def run(self):
 		'''
@@ -245,19 +297,17 @@ class UARTOutput(threading.Thread):
 						n_index = temp_buffer.index(newline) + len(newline)
 						# Store/Log new data
 						newest_data = temp_buffer[:n_index]
-						self._received_data.append(newest_data)
-						logging.info(newest_data)
+						with self._lock:
+							self._received_data.append(newest_data)
+						if self.log is not None:
+							self.log.info(newest_data)
 						temp_buffer = temp_buffer[n_index:]
 					else:
 						pass
 				
 				time.sleep(0.01)
-
+		finally:
 			self.exit()
-		except KeyboardInterrupt:
-			self.exit()
-			#self.quit = True
-
 
 
 if __name__ == "__main__":
