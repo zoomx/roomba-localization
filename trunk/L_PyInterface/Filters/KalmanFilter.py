@@ -25,8 +25,11 @@ class KalmanFilter(Filter.Filter):
         
         
     def move(self, transition_vec, transition_cov):
+        #print self.explorer_pos
+        #print self.explorer_cov
         orig_explorer_pos = self.explorer_pos.copy()
         self.explorer_pos = self.explorer_pos + transition_vec
+        self.explorer_pos[2] = self.explorer_pos[2] % (2*np.pi)
         
         # 'H' here is not the observation model, but a transformation
         # matrix described by Smith and Cheeseman '86.
@@ -72,17 +75,19 @@ class KalmanFilter(Filter.Filter):
             print 'OBS Variance:', R
             return
         self.explorer_cov[:2,:2] = R - np.dot(K, R)
-        self.explorer_pos[:2] = self.explorer_pos[:2] + np.dot(K, (self.explorer_pos[:2] - obs_pos))
-        
-        
-        
-        
+        #self.explorer_pos[:2] = self.explorer_pos[:2] + np.dot(K, (self.explorer_pos[:2] - obs_pos))
+        self.explorer_pos[:2] = obs_pos + np.dot(K, (self.explorer_pos[:2] - obs_pos))
     
-    def _observation_compass(self, obs, sensor):
+    def _observation_compass(self, obs_heading, sensor):
         '''
         
         '''
-        raise NotImplementedError
+        obs_variance = sensor.observation(obs_heading)
+        k = obs_variance * 1./(obs_variance + self.explorer_cov[2,2])
+        self.explorer_cov[2,2] = obs_variance - (k * obs_variance)
+        self.explorer_pos[2] = obs_heading + (k * (self.explorer_pos[2] - obs_heading))
+        self.explorer_pos[2] = self.explorer_pos[2] % (2*np.pi)
+        
     
     def draw(self, cr):
         '''

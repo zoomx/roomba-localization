@@ -90,6 +90,9 @@ class ParticleFilter(Filter.Filter):
             dis_error = obs - distance
             self.weight[L] = self.weight[L] * stats.norm.pdf(dis_error, beacon.mean, beacon.variance)
         
+        self._resample()
+        
+    def _resample(self):
         #=======================================================================
         # Resample
         #=======================================================================
@@ -116,8 +119,26 @@ class ParticleFilter(Filter.Filter):
             self.particles[index_set,:]
             self.particles = new_particles
     
-    def _observation_compass(self, observation, compass):
-        raise NotImplementedError
+    def _observation_compass(self, obs_heading, compass):
+        '''
+        obs_variance = compass.observation(obs_heading)
+        k = obs_variance * 1./(obs_variance + self.explorer_cov[2,2])
+        self.explorer_cov[2,2] = obs_variance - (k * obs_variance)
+        self.explorer_pos[2] = obs_heading + (k * (self.explorer_pos[2] - obs_heading))
+        self.explorer_pos[2] = self.explorer_pos[2] % (2*np.pi)
+        '''
+        
+        for L in range(self.total_particles):
+            # ~wk(L) = wk-1(L) * p(yk|xk(L))
+            # In other words, compute a new weight based on the particles
+            # current normalized weight, and the probability of the 
+            # evidence (yk|observation) given the current state 
+            # (xk(L)|particle(L)).
+            heading_error = obs_heading - self.particles[L][2]
+            self.weight[L] = self.weight[L] * stats.norm.pdf(heading_error, compass.mean, compass.variance)
+        
+        self._resample()
+    
     
     def get_explorer_pos(self):
         return self.particles.mean(axis=0)
@@ -181,10 +202,12 @@ class ParticleFilter(Filter.Filter):
     def draw(self, cr):
         cr.set_line_width(2)
         cr.set_source_rgba(0.4, 0, 0, 0.3)
+        '''
         for part in self.particles:
             cr.move_to(part[0], part[1])
             cr.rel_line_to(0.1, 0.1)
             cr.stroke()
+        '''
         self.explorer_pos = self.get_explorer_pos()
         self._draw_explorer(cr)
         self._draw_heading(cr)

@@ -1,19 +1,17 @@
 '''
 Filter.py
-River Allen
-July 2, 2010
+@author: River Allen
+@date: July 2, 2010
 
 'Abstract' class for Filters. 
-
 '''
 
 class Filter(object):
-    '''
-    
-    
-    '''
     def __init__(self, explorer_pos, explorer_cov, name='Filter'):
-        #self._init_plot()
+        '''
+        @param explorer_pos: The 
+        @type explorer_pos: numpy array
+        '''
         self.explorer_pos = explorer_pos
         self.explorer_cov = explorer_cov
         self.name = name
@@ -21,7 +19,7 @@ class Filter(object):
         self.explorer_diam = 16.75
     
     def draw(self, cr):
-        raise NotImplementedError, "abstract class"
+        raise NotImplementedError, "Abstract class"
     
     def _draw_explorer(self, cr):
         import numpy as np        
@@ -35,6 +33,9 @@ class Filter(object):
         cr.new_path()
     
     def _draw_heading(self, cr):
+        '''
+        A builtin   
+        '''
         import numpy as np
         cr.new_path()
         cr.set_line_width(1)
@@ -44,15 +45,15 @@ class Filter(object):
         cr.rel_line_to(self.explorer_diam * np.cos(angle), self.explorer_diam * np.sin(angle))
         cr.stroke()
         cr.new_path()
-    
+        
     def motion(self, transition_vec, transition_cov):
-        raise NotImplementedError, "abstract class"
+        raise NotImplementedError, "Abstract class"
     
     def observation(self, observation, obs_cov):
-        raise NotImplementedError, "abstract class"
+        raise NotImplementedError, "Abstract class"
     
     def step(self, transition_vec, transition_cov, observation, observation_cov):
-        raise NotImplementedError, "abstract class"
+        raise NotImplementedError, "Abstract class"
         
     def get_explorer_pos(self):
-        raise NotImplementedError, "abstract class"
+        raise NotImplementedError, "Abstract class"
