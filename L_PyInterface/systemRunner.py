@@ -188,6 +188,7 @@ class FilterSystemRunner(threading.Thread):
             print 'Beacon Ranges:', beacon_ranges
             print 'Estimated Explorer Position:', self.fm.get_explorer_pos_mean()
             
+            
             return True
         elif 'INITIAL' in out:
             return True
@@ -344,7 +345,8 @@ if __name__ == '__main__':
         duh_gui = None
         
     
-    sysRunner = FilterSystemRunner(serialPort, baudRate, map_obj, origin_pos, origin_cov, gui=duh_gui)
+    sysRunner = FilterSystemRunner(serialPort, baudRate, map_obj, origin_pos, origin_cov, gui=duh_gui,
+                                   run_pf=False, run_kf=True)
     sysRunner.start()
     #if gui:
     #    duh_gui.mainloop()

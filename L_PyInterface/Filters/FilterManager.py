@@ -2,6 +2,8 @@
 FilterManager.py
 @author: River Allen
 @date: July 7, 2010
+
+A Manager to control multiple filters in an organized manner.
 '''
 
 import Filter, KalmanFilter, ParticleFilter
@@ -10,6 +12,7 @@ from warnings import warn
 import threading
 import Sensor
 import numpy as np
+import scipy
 
 
 class FilterManagerException(Exception):
@@ -309,6 +312,7 @@ class TestThread(threading.Thread):
         for i in range(total_beacons):
             sm.add_sensor(Sensor.BeaconSensor(measurement_model[0], measurement_model[1],
                                                       [0,10000], beacons[i][0], beacons[i][1]))
+        sm.add_sensor(Sensor.CompassSensor(0, 1, [0, 6.281439977927592]))
         
         # Move Straight: Vector based on Motion Model measurements
         #translation_vec = [dist_hypot, dist_hypot, translation_model[2,0]]
@@ -327,7 +331,6 @@ class TestThread(threading.Thread):
         
         left_rot_mov = Movement.Movement(left_rotation_vec, rotation_cov)
         right_rot_mov = Movement.Movement(right_rotation_vec, rotation_cov)
-        
         
         #turn_leniency = np.deg2rad(10) # Used as an error judgement for deciding when to turn
         
@@ -397,9 +400,12 @@ class TestThread(threading.Thread):
                     # Doing it while it is stationary / rotating will make it too 
                     # confident.
                     if transition_mov.id == 1:
-                        
                         self.fm.observation(obs_dis, sm.sensors_by_type['Beacon'][j])
-                        
+                
+                if transition_mov.id in [2,3]:
+                    #self.fm.observation(prob_pos[2] + (randn() * 1.), sm.sensors_by_type['Compass'][0])
+                    pass
+            
             time.sleep(0.1)
             
     
@@ -421,7 +427,7 @@ if __name__ == '__main__':
     # Need to call this or gtk will never release locks
     gobject.threads_init()
     
-    fm = FilterManager(origin_pos, origin_cov, run_pf=False)
+    fm = FilterManager(origin_pos, origin_cov, run_pf=True, run_kf=False)
     tg = TestGUI(fm.get_draw())
     
     #tt = TestThread(fm, tg, auto=True)

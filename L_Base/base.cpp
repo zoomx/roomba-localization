@@ -132,7 +132,7 @@ void send_packet()
 	if (result != RADIO_TX_SUCCESS)
 	{
 		uint8_t retry_counter;
-		for (retry_counter = 0; retry_counter < 10; ++retry_counter)
+		for (retry_counter = 0; retry_counter < 20; ++retry_counter)
 		{
 			//Serial.println("Retransmit.");
 			delay(500);
