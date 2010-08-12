@@ -3,7 +3,10 @@ class Map(object):
         self.obstacles = obstacles
     
     def draw(self, cr):
-        raise NotImplemented, "abstract class"
+        raise NotImplemented, "Abstract class"
+    
+    def obstacles(self):    
+        raise NotImplemented, "Abstract class"
 
 class GridMap(Map):
     def __init__(self, obstacles=[]):
@@ -22,8 +25,7 @@ class GridMap(Map):
         
         cr.stroke()
         
-    def obstacles(self):    
-        pass
+    
     
 class LabMap(Map):
     def __init__(self, obstacles=[]):

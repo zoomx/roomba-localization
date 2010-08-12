@@ -6,8 +6,11 @@ takeInput = True            # True - Windows only, Will take and send input if T
 #===============================================================================
 # UART Settings
 #===============================================================================
-serialPort = 4              # Uses Array Numbering (i.e. COM1 is '0')
+serialPort = 'auto'              # Uses Array Numbering (i.e. COM1 is '0'). 
+                            # 'auto' can be used to attempt to find the COM port.
 baudRate = 100000
+joystickPollInterval = 0.7  # The amount of time in seconds between each poll of the joystick
+                            # (i.e. 1.5 is 1500 milliseconds)
 
 #===============================================================================
 # Log Settings

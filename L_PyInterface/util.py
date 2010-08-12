@@ -1,3 +1,7 @@
+'''
+A library of functions used 
+
+'''
 
 def affine_transform(angle, vec, covar):
     '''
@@ -32,7 +36,6 @@ def mvnrnd(mu, Sigma):
     import numpy as np
     from numpy.random import randn
     from numpy import linalg
-    from random import random
     
     d = mu.T.shape[0]
     if Sigma.shape != (d,d):
@@ -86,7 +89,7 @@ def mvnrnd(mu, Sigma):
 def sample_from_dist(weight):
     '''
     Not written by me (probably Dimitri or Yannis). Converted from matlab to
-    python 2010 by River Allen.
+    python in 2010 by River Allen.
     
     Return the index of a sample from a distribution weight.
     

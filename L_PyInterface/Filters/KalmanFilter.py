@@ -1,34 +1,43 @@
 '''
 KalmanFilter.py
 @author: River Allen
-@date: 21-06-2010
+@date: July 21, 2010
 
-The Module relating to Kalman Filters.
-Contains KalmanFilter obj.
-Use getKalmanFilter() for a static KalmanFilter obj
+Kalman Filter implementation for the Roomba localization experiments.
 '''
 import numpy as np
 from numpy import linalg
 import Filter
-import Sensor # This should be up a level...(Sensor stuff needs to be put somewhere nicer)
+import Sensor
 import util
-global KF
-KF = None
 
 class KalmanFilter(Filter.Filter):
-    '''
-    
-    
-    '''
     def __init__(self, explorer_pos, explorer_cov):
         super(KalmanFilter, self).__init__(explorer_pos, explorer_cov, 'Extended Kalman Filter')
         
         
     def move(self, transition_vec, transition_cov):
+        '''
+        Performs the prediction phase/motion model aspect of the Kalman Filter. 
+        After the robot has moved, this function is called to determine the most
+        likely new position and accumulate error from the move.
+        
+        The method for adding the transition vector to the explorer's current position
+        as well as determining the predicted explorer covariance is taken from:
+            Randell C. Smith and Peter Cheeseman. 1986.
+            On the Representation and Estimation of Spatial Uncertainty.
+        
+        @param tranisition_vec: The transition vector, or the vector the explorer 
+        has moved.
+        @type tranisition_cov: numpy.array
+        @param transition_cov: The error covariance matrix associated with the move.
+        @type transition_cov: numpy.array
+        '''
         #print self.explorer_pos
         #print self.explorer_cov
+        Bu, Q = util.affine_transform(self.explorer_pos[2], transition_vec, transition_cov)
         orig_explorer_pos = self.explorer_pos.copy()
-        self.explorer_pos = self.explorer_pos + transition_vec
+        self.explorer_pos = self.explorer_pos + Bu
         self.explorer_pos[2] = self.explorer_pos[2] % (2*np.pi)
         
         # 'H' here is not the observation model, but a transformation
@@ -37,42 +46,65 @@ class KalmanFilter(Filter.Filter):
                       [0, 1, (self.explorer_pos[0] - orig_explorer_pos[0])], 
                       [0, 0, 1]])
         
-        self.explorer_cov = np.dot(np.dot(H, self.explorer_cov), H.T) + transition_cov
+        self.explorer_cov = np.dot(np.dot(H, self.explorer_cov), H.T) + Q
         
     def observation(self, obs, sensor):
+        '''
+        Facilitates the update phase in the Kalman Filter. An observation and the 
+        observation's sensor object are provided from which the corresponding update phase
+        aspect of the Kalman Filter is run.
+        
+        @param obs: The observation value from the sensor.
+        @type obs: Sensor dependent
+        
+        @param sensor: The sensor object responsible for the observation.
+        @type sensor: Sensor.Sensor
+        '''
         if isinstance(sensor, Sensor.BeaconSensor):
             self._observation_beacon(obs, sensor) 
         elif isinstance(sensor, Sensor.CompassSensor):
             self._observation_compass(obs, sensor)
     
-    def _observation_beacon(self, obs, sensor):
+    def _observation_beacon(self, obs, beacon):
         '''
-        Run EKF update phase for beacon sensor.
+        Fuse beacon range data into the EKF. This is considered part of the update phase.
 
-        Run a modified Update Phase Kalman Filter
-        This is based off how it was done in:
-            Preliminary Results in Range Only Localization and Mapping
-            George Kantor + Sanjiv Singh
+        This code in this method is based on work in:
+            George Kantor and Sanjiv Singh. 2002.
+            Preliminary Results in Range Only Localization and Mapping.
+            
+        @param obs: The range value given by the beacon.
+        @type obs: int
         
+        @param beacon: The beacon object, which should contain information pertaining to
+        its position, covariance and tolerable range.
+        @type beacon: Sensor.BeaconSensor 
         '''
-        b_angle = np.arctan2((sensor.y_pos - self.explorer_pos[1]),(sensor.x_pos - self.explorer_pos[0]))
-        x_obs_pos = sensor.x_pos - ((obs)*np.cos(b_angle))
-        y_obs_pos = sensor.y_pos - ((obs)*np.sin(b_angle))
+        b_angle = np.arctan2((beacon.y_pos - self.explorer_pos[1]),(beacon.x_pos - self.explorer_pos[0]))
+        x_obs_pos = beacon.x_pos - ((obs)*np.cos(b_angle))
+        y_obs_pos = beacon.y_pos - ((obs)*np.sin(b_angle))
         
         
         obs_pos = np.array([x_obs_pos, y_obs_pos])
-        obs_cov = sensor.observation(obs)
+        obs_cov = beacon.observation(obs)
+        
+        # !!!!! Very Important !!!!!!
+        # This was taken from Kantor and Singh, and allows us to remain
+        # in Cartesian coordinates as opposed to having to convert to polar
+        # and back because the beacon only gives us a range as opposed to
+        # a position.
         R = np.array([[obs_cov, 0], [0, 10 * obs_cov]])
+        
         _,R = util.affine_transform(b_angle, np.array([0,0]), R)
         
         try:
             K = np.dot(R, linalg.inv((R + self.explorer_cov[:2,:2])))
         except linalg.LinAlgError:
-            print '-'*50
-            print 'Explorer Pos:', self.explorer_pos
-            print 'Explorer Cov:', self.explorer_cov
-            print 'Obs position:', obs_pos
-            print 'OBS Variance:', R
+            #print '-'*50
+            #print 'Explorer Pos:', self.explorer_pos
+            #print 'Explorer Cov:', self.explorer_cov
+            #print 'Obs position:', obs_pos
+            #print 'OBS Variance:', R
             return
         self.explorer_cov[:2,:2] = R - np.dot(K, R)
         #self.explorer_pos[:2] = self.explorer_pos[:2] + np.dot(K, (self.explorer_pos[:2] - obs_pos))
@@ -80,7 +112,17 @@ class KalmanFilter(Filter.Filter):
     
     def _observation_compass(self, obs_heading, sensor):
         '''
+        Similar to the beacon, but operates on the compass. What makes the compass
+        different is that the prediction phase only affects the explorer's heading and 
+        the heading error in the explorer covariance matrix. Thus, it only affects:
+        explorer_pos[2]
+        explorer_cov[2,2]
         
+        @param obs_heading: The observed heading given by the compass (0-3599).
+        @type obs_heading: int
+        
+        @param sensor: The compass responsible for the reading.
+        @type sensor: Sensor.CompassSensor
         '''
         obs_variance = sensor.observation(obs_heading)
         k = obs_variance * 1./(obs_variance + self.explorer_cov[2,2])
@@ -91,7 +133,13 @@ class KalmanFilter(Filter.Filter):
     
     def draw(self, cr):
         '''
+        Draws all components associated with the Kalman Filter in the RoombaGUI:
+        - Explorer
+        - Heading
+        - Error Ellipse (Not working properly. The center is off and it seems a bit annoying to fix.)
         
+        @param cr: Common drawing area object.
+        @type cr: Cairo Context  
         '''
         self._draw_explorer(cr)
         self._draw_heading(cr)
@@ -99,7 +147,10 @@ class KalmanFilter(Filter.Filter):
     
     def _draw_error_ellipse(self, cr):
         '''
+        Draws the error ellipse for the 
         
+        @param cr: Common drawing area object.
+        @type cr: Cairo Context
         '''
         cr.new_path()
         cr.set_line_width(0.4)
@@ -120,7 +171,8 @@ class KalmanFilter(Filter.Filter):
         http://www.mathworks.com/matlabcentral/fileexchange/4705-errorellipse
         error_ellipse
         by AJ Johnson
-        01 Apr 2004 (Updated 13 Apr 2004) 
+        01 Apr 2004 (Updated 13 Apr 2004)
+        July 21, 2010 (Converted to Python by River Allen)
         
         Generate x and y points that define a covariance ellipse, given a 2x2
         covariance matrix, C.
@@ -152,6 +204,13 @@ class KalmanFilter(Filter.Filter):
         return x, y
     
     def _draw_heading_error(self, cr):
+        '''
+        NOT WORKING. Attempts to draw a sense of current error heading.
+        
+        
+        @param cr: Common drawing area object.
+        @type cr: Cairo Context
+        '''
         cr.new_path()
         cr.set_line_width(1)
         cr.set_source_rgba(0, 0, 0.5, 0.8)
@@ -163,112 +222,10 @@ class KalmanFilter(Filter.Filter):
     
     
     def get_explorer_pos(self):
+        '''
+        Retrieve the most likely position of the explorer.
+
+        @rtype: numpy.array
+        '''
         return self.explorer_pos
-    
-    def step(self, X, P, F, H, B, Q, R, u, z):
-        '''
-        See the Wikipedia article on the Kalman Filter. 
-        This function, performs the Kalman Filter defined in that article.
-        
-        First, the prediction phase is computed.
-            Xk|k-1 = F*Xk-1 + B*u
-            ...
-        Second, the update phase is computed.
-            ...
-            ...
-            ...
-            ...
-        Finally, the results of the update phase are returned.
-        
-        @param X: The mean vector describing state at k-1 (last state). For example, in a 2-D system this might
-        encompass [x, y, vx, vy] where vx and vy are the velocities for x and y.
-        @type X: Vector or 1-D matrix/list [n x 1]
-        @param P: The filter's covariance matrix at state k-1.
-        @type P: Matrix [n x n]
-        @param F: The Transition model at state k. This your motion model. When this is
-        multiplied against X, it should create a new X that describes your movement. For example,
-        
-        F =[1 0 t 0;
-            0 1 0 t;
-            0 0 1 0;
-            0 0 0 1]
-        
-        
-        @return: X (Current state vector) and P (current covariance matrix).
-        @rtype: Tuple [X, P]
-        '''
-        # Prediction Phase
-        X = np.dot(F, X) + np.dot(B, u)
-        P = np.dot(np.dot(F, P), F.T) + Q
-        
-        # Update Phase
-        # Measurement Residual
-        y = z - np.dot(H, X)
-        # Measurement cov
-        S = np.dot(np.dot(H, P), H.T) + R      
-        #  Optimal Kalman gain
-        K = np.dot(np.dot(P, H.T), (linalg.inv(S)))
-        #  Updated state estimate
-        X = X + np.dot(K, y)       
-        d = X.shape[0]
-        #  Updated state cov
-        P = np.dot((np.eye(d) - np.dot(K, H)), P)
-        
-        return X, P
-
-    def modified_prediction_phase(self, X, P, Q, B, u):
-        '''
-        Modified KF Prediction Phase taken from
-        Singh / Kantor 2002 paper.
-        Smith / Cheeseman 1986 paper.
-        
-        '''
-        theta = X[2];
-        transform = np.array([[np.cos(theta), -np.sin(theta), 0], 
-                              [np.sin(theta), np.cos(theta), 0],
-                              [0, 0, 1]])
-    
-        control_vector = np.dot(transform, u.T)
-    
-        transition_cov = np.dot(np.dot(transform, Q), transform.T)
-        orig_explorer_pos = X
-        explorer_pos = X + control_vector
-        
-        # 'H' here is not the observation model, but a transformation
-        # matrix described by smith and cheeseman.
-        H = np.array([[1, 0, -(explorer_pos[1] - orig_explorer_pos[1])], 
-             [0, 1, (explorer_pos[0] - orig_explorer_pos[0])], 
-             [0, 0, 1]])
-        
-        explorer_cov = np.dot(np.dot(H, P), H.T) + transition_cov
-    
-        return (explorer_pos, explorer_cov)
-        
-    def modified_update_phase(self, X, P, R, z):
-        '''
-        Run a modified Update Phase Kalman Filter
-        This is based off how it was done in:
-            Preliminary Results in Range Only Localization and Mapping
-            George Kantor + Sanjiv Singh
-        
-        '''
-        
-        K = np.dot(R, linalg.inv((R + P)))
-        P = R - np.dot(K, R)
-        X = z + np.dot(K, (X - z))
-        
-        return X, P
-
-def getKalmanFilter():
-    '''
-    Return a static Kalman Filter Object. This should be used over creating a separate one, 
-    unless a separate, unique KF is desired.
-    
-    @return: Static KF
-    @rtype: KalmanFilter
-    '''
-    global KF
-    if KF is None:
-        KF = KalmanFilter()
-    return KF
     

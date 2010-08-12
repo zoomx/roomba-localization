@@ -20,30 +20,32 @@ except:
 import os
 import time
 import struct
-
 from UART import UARTSystem
 from UART import FilterCLI
 import roombaGUI
 import Map
-from Filters import FilterManager
+from Filters import FilterManager, KalmanFilter, ParticleFilter
 import Sensor
 import Movement
 from Data import models
 import utilRoomba
 
-
-
 class FilterSystemRunner(threading.Thread):
 
     def __init__(self, serial_port, baud_rate, map_obj, origin_pos, origin_cov, gui=None, 
                  simulation=False, run_pf=True, run_kf=True):
+        '''
+        @param serial_port: 
+        @type serial: 
+        
+        '''
         super(FilterSystemRunner, self).__init__()
         self.quit = False
         #=======================================================================
         # UART
         #=======================================================================
         self.cli = FilterCLI.FilterCLI()
-        self.ua = UARTSystem.UART(serial_port, baud_rate, take_input=True, cli=self.cli,
+        self.ua = UARTSystem.UART(serial_port, baud_rate, uart_input=self.cli,
                                   log=logging, approve=True)
         self.uin = [] # uart input from user
         self.uout = [] # uart output from base/roomba
@@ -52,8 +54,11 @@ class FilterSystemRunner(threading.Thread):
         #=======================================================================
         # Filter
         #=======================================================================
-        self.fm = FilterManager.FilterManager(origin_pos, origin_cov, use_obs=True, 
-                 run_kf=False, run_pf=True, total_particles=1000)
+        self.fm = FilterManager.FilterManager()
+        if run_kf:
+            self.fm.add_filter(KalmanFilter.KalmanFilter(origin_pos, origin_cov))
+        if run_pf:
+            self.fm.add_filter(ParticleFilter.ParticleFilter(origin_pos, origin_cov))
         
         #=======================================================================
         # Data
@@ -102,8 +107,9 @@ class FilterSystemRunner(threading.Thread):
         right_rot_mov = Movement.Movement(right_rotation_vec, rotation_cov)
         
         explorer_pos = self.fm.get_explorer_pos_mean()
-        self.me = Movement.Move_Explorer(explorer_pos, [], translation_mov, left_rot_mov, 
-                                    right_rot_mov, perfect_movement=False)
+        self.me = Movement.MoveExplorer(explorer_pos, [11, 11, np.deg2rad(6)], 
+                                        translation_moves=[],
+                                        rotation_moves=[])
         
         #=======================================================================
         # Map
@@ -169,9 +175,10 @@ class FilterSystemRunner(threading.Thread):
             sensor_data.split()
             print sensor_data
             
-            #example: data = '0 1006 |125 321 344'
+            #example: data = '0 1006 215|125 321 344 '
+            #           angle distance compass| beac1 beac2 beac3 ... 
             move_data, beacon_ranges = sensor_data.split('|')
-            move_data = map(int, move_data.split(' ')[:-1])
+            move_data = map(int, move_data.split(' '))
             beacon_ranges = map(int, beacon_ranges.split(' ')[:-1])
             if len(beacon_ranges) != len(self.sm.sensors_by_type['Beacon']):
                 raise RuntimeError, 'No. of beacon ranges does not match No. of beacons.'
