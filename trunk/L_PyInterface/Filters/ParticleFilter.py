@@ -63,7 +63,8 @@ class ParticleFilter(Filter.Filter):
     
     def move(self, transition_vec, transition_cov):
         for L in range(self.total_particles):
-            transition_sample = util.mvnrnd(transition_vec, transition_cov)
+            p_move_vec, p_move_cov = util.affine_transform(self.particles[L][2], transition_vec, transition_cov)
+            transition_sample = util.mvnrnd(p_move_vec, p_move_cov)
             # Xk(L) = p(Xk-1(L),yk) // ignoring the ',yk' for now
             self.particles[L,:] = self.particles[L,:] + transition_sample
         
@@ -88,7 +89,7 @@ class ParticleFilter(Filter.Filter):
             # (xk(L)|particle(L)).
             distance = np.sqrt((beacon.x_pos-self.particles[L,0])**2 + (beacon.y_pos-self.particles[L,1])**2)
             dis_error = obs - distance
-            self.weight[L] = self.weight[L] * stats.norm.pdf(dis_error, beacon.mean, beacon.variance)
+            self.weight[L] = self.weight[L] * stats.norm.pdf(dis_error, beacon.mean, beacon.observation(obs))
         
         self._resample()
         
@@ -135,7 +136,7 @@ class ParticleFilter(Filter.Filter):
             # evidence (yk|observation) given the current state 
             # (xk(L)|particle(L)).
             heading_error = obs_heading - self.particles[L][2]
-            self.weight[L] = self.weight[L] * stats.norm.pdf(heading_error, compass.mean, compass.variance)
+            self.weight[L] = self.weight[L] * stats.norm.pdf(heading_error, compass.mean, compass.observation(obs_heading))
         
         self._resample()
     

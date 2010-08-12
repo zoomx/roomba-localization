@@ -21,7 +21,7 @@ def load_data(path=''):
     
     @return: (translation_model, translation_data, rotation_model, 
             rotation_data, measurement_model, measurement_data, beacons)
-    @rtype: tuple of numpy arrays
+    @rtype: tuple of numpy.arrays
     '''
     if path == '':
         path = '.'
@@ -40,7 +40,7 @@ def load_data(path=''):
     measurement_model = f['measurement_model']
     measurement_data = f['measurement_data']
     
-    beacons = np.array([[0,300], [200,300], [0,0]])
+    beacons = np.array([[-25,325], [225,325], [-15,-15]])
     
     return (translation_model, translation_data, rotation_model, 
             rotation_data, measurement_model, measurement_data, beacons)

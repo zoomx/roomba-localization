@@ -3,7 +3,9 @@ UARTCLI.py
 @author: River Allen
 @date: July 12, 2010
 
-Universal Asynchronous Receive/Transmit Command Line Interface (UARTCLI)
+Universal Asynchronous Receive/Transmit Command Line Interface (UARTCLI).
+
+Originally based off code from: http://effbot.org/librarybook/cmd.htm
 '''
 
 import cmd
@@ -47,7 +49,6 @@ class UARTCLI(cmd.Cmd, UARTInput.UARTInput):
 	def do_nothing(self, args):
 		pass
 	
-	
 	def run_cmd(self, cmds):
 		'''
 		Note: Does not fully work yet.
@@ -66,7 +67,7 @@ class UARTCLI(cmd.Cmd, UARTInput.UARTInput):
 		elif type(cmds) is list:
 			pass
 		else:
-			raise TypeError, 'cmd is not list or str.'
+			raise TypeError, 'cmds is not list or str.'
 		
 		self.cmdqueue.extend(cmds)
 		print 'Before flush', self.cmdqueue
@@ -82,8 +83,8 @@ class UARTCLI(cmd.Cmd, UARTInput.UARTInput):
 	do_EOF = do_exit
 	help_EOF = help_exit
 
-
-def main():
+if __name__ == "__main__":
+	# Testing out CLI
 	try:
 		CLI = UARTCLI()
 		CLI.cmdloop()
@@ -91,6 +92,3 @@ def main():
 		CLI.do_exit('')	
 	except:
 		raise
-	
-if __name__ == "__main__":
-	main();
