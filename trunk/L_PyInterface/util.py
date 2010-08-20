@@ -88,7 +88,7 @@ def mvnrnd(mu, Sigma):
 
 def sample_from_dist(weight):
     '''
-    Not written by me (probably Dimitri or Yannis). Converted from matlab to
+    Not written by me (probably Dimitri, Dave or Ioannis). Converted from matlab to
     python in 2010 by River Allen.
     
     Return the index of a sample from a distribution weight.
@@ -106,4 +106,3 @@ def sample_from_dist(weight):
         probsum = probsum + weight[i]
         if (p < probsum):
             return i
-

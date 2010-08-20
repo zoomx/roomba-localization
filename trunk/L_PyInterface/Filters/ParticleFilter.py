@@ -67,14 +67,7 @@ class ParticleFilter(Filter.Filter):
             transition_sample = util.mvnrnd(p_move_vec, p_move_cov)
             # Xk(L) = p(Xk-1(L),yk) // ignoring the ',yk' for now
             self.particles[L,:] = self.particles[L,:] + transition_sample
-        
-        
-    def observation(self, obs, sensor):
-        if isinstance(sensor, Sensor.BeaconSensor):
-            self._observation_beacon(obs, sensor) 
-        elif isinstance(sensor, Sensor.CompassSensor):
-            self._observation_compass(obs, sensor)
-        
+            self.particles[L,2] = self.particles[L,2] % (2 * np.pi)
         
     def _observation_beacon(self, obs, beacon):
         #=======================================================================
@@ -93,6 +86,51 @@ class ParticleFilter(Filter.Filter):
         
         self._resample()
         
+    
+    
+    def _observation_compass(self, obs_heading, compass):
+        '''
+        obs_variance = compass.observation(obs_heading)
+        k = obs_variance * 1./(obs_variance + self.explorer_cov[2,2])
+        self.explorer_cov[2,2] = obs_variance - (k * obs_variance)
+        self.explorer_pos[2] = obs_heading + (k * (self.explorer_pos[2] - obs_heading))
+        self.explorer_pos[2] = self.explorer_pos[2] % (2*np.pi)
+        '''
+        
+        for L in range(self.total_particles):
+            # ~wk(L) = wk-1(L) * p(yk|xk(L))
+            # In other words, compute a new weight based on the particles
+            # current normalized weight, and the probability of the 
+            # evidence (yk|observation) given the current state 
+            # (xk(L)|particle(L)).
+            heading_error = obs_heading - self.particles[L][2]
+            self.weight[L] = self.weight[L] * stats.norm.pdf(heading_error, compass.mean, compass.observation(obs_heading))
+        
+        self._resample()
+    
+    def _observation_trilateration(self, beacons, tril_sensor):
+        obs_variance = tril_sensor.observation(None)
+        obs_position = tril_sensor.trilateration(beacons, self.get_explorer_pos())
+        # Heading update
+        obs_heading = tril_sensor.trilateration_heading()
+        if obs_heading is None:
+            # Not enough moves in a row to be used.
+            return
+        obs_heading_variance = np.deg2rad(2) # Arbitrary value chosen. Not sure how to properly determine this.
+        for L in range(self.total_particles):
+            # ~wk(L) = wk-1(L) * p(yk|xk(L))
+            # In other words, compute a new weight based on the particles
+            # current normalized weight, and the probability of the 
+            # evidence (yk|observation) given the current state 
+            # (xk(L)|particle(L)).
+            dis_error = np.hypot(obs_position[0] - self.particles[L][0], obs_position[1] - self.particles[L][1]) 
+            self.weight[L] = self.weight[L] * stats.norm.pdf(dis_error, 0, obs_variance[0][0])
+            if obs_heading is not None:
+                heading_error = self.particles[L][2] - obs_heading
+                self.weight[L] = self.weight[L] * stats.norm.pdf(heading_error, 0, obs_heading_variance)
+        
+        self._resample()
+    
     def _resample(self):
         #=======================================================================
         # Resample
@@ -119,27 +157,6 @@ class ParticleFilter(Filter.Filter):
             #index_set = unique( index );
             self.particles[index_set,:]
             self.particles = new_particles
-    
-    def _observation_compass(self, obs_heading, compass):
-        '''
-        obs_variance = compass.observation(obs_heading)
-        k = obs_variance * 1./(obs_variance + self.explorer_cov[2,2])
-        self.explorer_cov[2,2] = obs_variance - (k * obs_variance)
-        self.explorer_pos[2] = obs_heading + (k * (self.explorer_pos[2] - obs_heading))
-        self.explorer_pos[2] = self.explorer_pos[2] % (2*np.pi)
-        '''
-        
-        for L in range(self.total_particles):
-            # ~wk(L) = wk-1(L) * p(yk|xk(L))
-            # In other words, compute a new weight based on the particles
-            # current normalized weight, and the probability of the 
-            # evidence (yk|observation) given the current state 
-            # (xk(L)|particle(L)).
-            heading_error = obs_heading - self.particles[L][2]
-            self.weight[L] = self.weight[L] * stats.norm.pdf(heading_error, compass.mean, compass.observation(obs_heading))
-        
-        self._resample()
-    
     
     def get_explorer_pos(self):
         return self.particles.mean(axis=0)

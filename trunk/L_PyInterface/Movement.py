@@ -81,7 +81,6 @@ class MoveExplorer(object):
     def move_to(self, x, y):
         self._waypoints.append([x, y])
     
-    
     def translate(self, explorer_pos):
         explorer_angle = explorer_pos[2] %(2 * np.pi)
         return util.affine_transform(explorer_angle, self.translation_movement.vec, 
@@ -197,6 +196,14 @@ class MoveExplorer(object):
 
         self._movement_history.append(_mov.vec)
         return _mov
+    
+    def find_move(self, id):
+        if self.translation_moves.has_key(id):
+            return self.translation_moves[id]
+        elif self.rotation_moves.has_key(id):
+            return self.rotation_moves[id]
+        else:
+            return None
     
     def get_next_move_old(self, explorer_pos):
         if self._waypoints == []:

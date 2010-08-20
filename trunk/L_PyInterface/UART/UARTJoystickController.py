@@ -40,7 +40,7 @@ class UARTJoystickController(UARTInput.UARTInput):
         UARTInput.UARTInput.__init__(self)
         self.quit = False
 
-        self.struct_fmt = 'b' * 19 + '\r\n' # 12 buttons + 2 (xyaxis1) + 2 (xyaxis2) + 2 (hat)
+        self.struct_fmt = 'b' * 19 # 12 buttons + 2 (xyaxis1) + 2 (xyaxis2) + 2 (hat)
         self._debug = debug
         self._button_toggle = False
         pygame.init()
@@ -66,6 +66,7 @@ class UARTJoystickController(UARTInput.UARTInput):
                 print('-' * 50)
     
         self._packets = []
+        
     
     def run(self):
         '''
@@ -73,6 +74,7 @@ class UARTJoystickController(UARTInput.UARTInput):
         thread. Here, it polls the joystick and queues data that can be viewed by other threads
         (most probably UARTSystem).
         '''
+        time.sleep(1.5) # Needed amount of time for my board at home to init.
         try:
             button_history = []
             for joy in self.joysticks:
@@ -116,6 +118,7 @@ class UARTJoystickController(UARTInput.UARTInput):
                     packet = struct.pack(self.struct_fmt, *tuple(all_data))
                     # Allow another thread (probably UARTSystem) to get queued data
                     self.add_input(packet)
+                    #self.add_input("Dalgoth...")
                     
                     if self._debug:
                         print('Buttons:\t' + str(buttons))
@@ -135,7 +138,9 @@ if __name__ == '__main__':
     execfile("..\\globalConfig.py")
     
     
-    joy = UARTJoystickController(button_toggle=False, poll_interval=joystickPollInterval, debug=False)
+    joy = UARTJoystickController(button_toggle=False, poll_interval=joystickPollInterval, 
+                                 #debug=True)
+                                 debug=False)
     # Uncomment next line if you want to ONLY test the joystick.
     #joy.run() 
     

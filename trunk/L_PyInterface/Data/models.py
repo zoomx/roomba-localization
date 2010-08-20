@@ -40,7 +40,7 @@ def load_data(path=''):
     measurement_model = f['measurement_model']
     measurement_data = f['measurement_data']
     
-    beacons = np.array([[-25,325], [225,325], [-15,-15]])
+    beacons = np.array([[-30,400], [227,400], [300,-30]])
     
     return (translation_model, translation_data, rotation_model, 
             rotation_data, measurement_model, measurement_data, beacons)

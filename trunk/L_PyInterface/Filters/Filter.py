@@ -77,14 +77,24 @@ class Filter(object):
         '''
         raise NotImplementedError, "Abstract class"
     
-    def observation(self, observation, obs_cov):
+    def observation(self, obs, sensor):
         '''
         Common function called after "independent" number of motions. Observation data is
         given to the filter to bound the error.
         
-        @param observation: The observation value associated with the
+        @param obs: The observation value associated with a sensor.
+        @type obs: Dependent on sensor
+        
+        @param sensor: The sensor that will be fused in the filter.
+        @type sensor: Sensor.Sensor 
         '''
-        raise NotImplementedError, "Abstract class"
+        import Sensor
+        if isinstance(sensor, Sensor.BeaconSensor):
+            self._observation_beacon(obs, sensor) 
+        elif isinstance(sensor, Sensor.CompassSensor):
+            self._observation_compass(obs, sensor)
+        elif isinstance(sensor, Sensor.Trilateration2DSensor):
+            self._observation_trilateration(obs, sensor)
     
     def step(self, transition_vec, transition_cov, observation, observation_cov):
         '''

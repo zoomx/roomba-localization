@@ -161,7 +161,7 @@ class UART(threading.Thread):
 			if self.uo.isAlive():
 				raise RuntimeError, 'The UART output thread is not dieing...'
 		
-		if self.take_input:
+		if self.ui is not None:
 			# A tricksy way to close/get out of the cmdloop of ui if it is not already closed.
 			self.ui.cmdqueue.insert(0, 'exit')
 			if self.ui.isAlive():
@@ -222,6 +222,8 @@ class UART(threading.Thread):
 						self.ser.write(self._write_data_buffer.pop(0))
 			elif self.ui is not None:
 				for uin in uin_data:
+					if self.debug:
+						print 'SE:', uin
 					self.ser.write(uin)
 				
 			time.sleep(0.1)
@@ -267,7 +269,7 @@ class UARTOutput(threading.Thread):
 			temp_buffer = ''
 			newline = '\r\n'
 			while not self.quit:
-				val = self.ser.read(100)
+				val = self.ser.read(400)
 				if len(val) > 0:
 					temp_buffer += val
 
