@@ -15,6 +15,7 @@
 #include "sonar/sonar.h"
 #include "beacon_extra.h"
 #include "roomba_extra.h"
+#include "compass/compass.h"
 
 /*
  * In this program the query process is started by the timer, every 1000 ms.  I would propose
@@ -111,6 +112,8 @@ int main()
 	Radio_Configure_Rx(RADIO_PIPE_1, explorer_baserx_address, ENABLE);
 	Roomba_ConfigDirtDetectLED(LED_ON);
 
+	Compass_Init();
+
 	// this routine can be enabled to perform an infinite ping test on a given beacon.
 	//beacon_test_routine(2);
 
@@ -168,6 +171,8 @@ int main()
 				packet.payload.log.seq = expected_msg_seq;
 				packet.payload.log.angle = Roomba_GetTotalAngle();
 				packet.payload.log.distance = Roomba_GetTotalDistance();
+				delay(500); // Give the the compass a chance to stop oscillating after the move.
+				packet.payload.log.compass = Compass_GetReading();
 				memcpy(packet.payload.log.beacon_distance, beacon_distances, sizeof(int16_t)*TOTAL_BEACONS);
 				send_packet();
 				++expected_msg_seq;
