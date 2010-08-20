@@ -25,8 +25,10 @@ void Sonar_Init()
 	digitalWrite(SONAR_PIN, LOW);
 
 	// configure timer 1 for input capture (overwrites Arduino default setting)
+	// The yaw sensor module also uses timer 1, so if you change this configuration make sure that the
+	// change won't affect the yaw sensor.
 	TCCR1A = 0;
-	TIMSK1 = _BV(ICIE1);				// enable ICP1 interrupt (on pin PD4)
+	TIMSK1 |= _BV(ICIE1);				// enable ICP1 interrupt (on pin PD4)
 	TCNT1 = 0;
 	TCCR1B = _BV(CS11) | _BV(CS10);		// start running timer at 250 kHz (16 MHz base).
 }
