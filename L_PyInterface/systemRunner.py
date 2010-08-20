@@ -33,23 +33,43 @@ import utilRoomba
 class FilterSystemRunner(threading.Thread):
 
     def __init__(self, serial_port, baud_rate, map_obj, origin_pos, origin_cov, gui=None, 
-                 simulation=False, run_pf=True, run_kf=True):
+                 run_pf=True, run_kf=True):
         '''
         @param serial_port: 
-        @type serial: 
+        @type serial_port: 
         
+        @param baud_rate: 
+        @type baud_rate:
+        
+        @param map_obj: 
+        @type map_obj: 
+        
+        @param origin_pos:
+        @type origin_pos:
+        
+        @param origin_cov: 
+        @type origin_cov:
+        
+        @param gui: 
+        @type gui: 
+         
+        @param run_pf: 
+        @type run_pf:
+        
+        @param run_kf: 
+        @type run_kf: 
         '''
         super(FilterSystemRunner, self).__init__()
         self.quit = False
+        self._move_performed = True
+        self._move_timeout = 5
         #=======================================================================
         # UART
         #=======================================================================
         self.cli = FilterCLI.FilterCLI()
-        self.ua = UARTSystem.UART(serial_port, baud_rate, uart_input=self.cli,
-                                  log=logging, approve=True)
+        self.ua = UARTSystem.UART(serial_port, baud_rate, uart_input=self.cli, approve=True)
         self.uin = [] # uart input from user
         self.uout = [] # uart output from base/roomba
-        
         
         #=======================================================================
         # Filter
@@ -81,6 +101,10 @@ class FilterSystemRunner(threading.Thread):
             self.sm.add_sensor(Sensor.BeaconSensor(measurement_model[0], measurement_model[1],
                                                       [0,10000], self.beacons[i][0], self.beacons[i][1]))
         
+        # Trilateration will be used if 2 or more beacons yield readings.
+        self.sm.add_sensor(Sensor.Trilateration2DSensor(measurement_model[0], np.eye(2)*measurement_model[1], None))
+        
+        
         #=======================================================================
         # Movement
         #=======================================================================
@@ -92,7 +116,12 @@ class FilterSystemRunner(threading.Thread):
         translation_vec = self.translation_model[:,0]
         translation_vec[:2] = np.array([100.4, 4])
         translation_cov = np.cov(self.translation_data.T)
-        translation_mov = Movement.Movement(translation_vec, translation_cov)
+        translation_mov = Movement.Movement(translation_vec, translation_cov, id='0 100\n')
+        
+        # Bit hacky here, did not do real measurements, just based off eye measurements
+        translation_moves = [translation_mov,
+                             Movement.Movement(np.array([10.1, 0.5, np.deg2rad(0.2)]), np.array([[0.5,0,0],[0,1,0],[0,0,np.deg2rad(0.6)]]), id='0 10\n'),#np.eye(3) * .0001,
+                             Movement.Movement(np.array([50.2, 2, np.deg2rad(0.6)]), np.array([[0.5,0,0],[0,1,0],[0,0,np.deg2rad(0.6)]]), id='0 50\n')]#np.array([[],[],[]]))]
         
         # Turn: Vector based on Motion Model measurements
         left_rotation_vec = self.rotation_model[:,0]
@@ -103,13 +132,18 @@ class FilterSystemRunner(threading.Thread):
         rotation_cov = np.zeros([3,3])
         rotation_cov[2,2] = self.rotation_model[2,1]
         
-        left_rot_mov = Movement.Movement(left_rotation_vec, rotation_cov)
-        right_rot_mov = Movement.Movement(right_rotation_vec, rotation_cov)
+        left_rot_mov = Movement.Movement(left_rotation_vec, rotation_cov, id='10 0\n')
+        right_rot_mov = Movement.Movement(right_rotation_vec, rotation_cov, id='-10 0\n')
+        rotation_moves = [left_rot_mov, right_rot_mov,
+                          Movement.Movement(np.array([0,0,np.deg2rad(-5)]), rotation_cov, id='-3 0\n'),
+                          Movement.Movement(np.array([0,0,np.deg2rad(5)]), rotation_cov, id='3 0\n')]
         
         explorer_pos = self.fm.get_explorer_pos_mean()
         self.me = Movement.MoveExplorer(explorer_pos, [11, 11, np.deg2rad(6)], 
-                                        translation_moves=[],
-                                        rotation_moves=[])
+                                        translation_moves=translation_moves,
+                                        rotation_moves=rotation_moves)
+        
+        self._accumulate_distance = np.array([0, 0, 0], np.float32)
         
         #=======================================================================
         # Map
@@ -183,19 +217,50 @@ class FilterSystemRunner(threading.Thread):
             if len(beacon_ranges) != len(self.sm.sensors_by_type['Beacon']):
                 raise RuntimeError, 'No. of beacon ranges does not match No. of beacons.'
             
-            print 'Move Data:', move_data
-            if self._last_move is not None:
-                # Move filters
-                self.fm.move(self._last_move[0], self._last_move[1])
-            
-                # Add in observational data
-                for j in range(len(beacon_ranges)):
-                    self.fm.observation(beacon_ranges[j], self.sm.sensors_by_type['Beacon'][j])
-            
+            print '-' * 50
+            print 'Explorer Move:', move_data
             print 'Beacon Ranges:', beacon_ranges
-            print 'Estimated Explorer Position:', self.fm.get_explorer_pos_mean()
             
+            if self._last_move is not None:
+                move = self.me.find_move(self._last_move)
+                self.fm.move(move.vec, move.cov)
+                self._accumulate_distance += np.abs(move.vec)
+                
+                # Only perform filter observation when enough translation has occurred.
+                # Observations must be independent.
+                if self._accumulate_distance[0] >= 20:
+                    self._accumulate_distance[0] = 0
+                    beacon_sensors = self.sm.sensors_by_type['Beacon']
+                    beacon_sensors_with_values = []
+                    for i in range(len(beacon_sensors)):
+                        if beacon_ranges[i] != -1:
+                            beacon_sensors_with_values.append(beacon_sensors[i])
+                        beacon_sensors[i].obs = beacon_ranges[i]
+                    
+                    
+                    if len(beacon_sensors_with_values) == 1:
+                        # Use the old...lesser way for a single beacon
+                        self.fm.observation(beacon_sensors[0].obs, beacon_sensors[0])
+                        
+                        # Klugey as hell, but this ensures that the trilateral heading
+                        # will not be used, which would be totally wrong. Temporary solution 
+                        # until something better is thought up.
+                        self.sm.sensors_by_type['Trilateration2D'][0]._pos_history = []
+                        
+                    elif len(beacon_sensors_with_values) > 1:
+                        # Trilateration with 2 or more
+                        self.fm.observation(beacon_sensors_with_values, self.sm.sensors_by_type['Trilateration2D'][0])
+                    else:
+                        # No beacons gave anything of worth...must use motion model
+                        pass
+                    
+                if self._accumulate_distance[2] >= np.deg2rad(10):
+                    self._accumulate_distance[2] = 0
+                    # Run ...compass...or other things
             
+            explorer_pos = self.fm.get_explorer_pos_mean()
+            print 'Estimated Explorer Position:', explorer_pos, '('+str(np.rad2deg(explorer_pos[2]))+')'
+            print '-' * 50
             return True
         elif 'INITIAL' in out:
             return True
@@ -209,48 +274,21 @@ class FilterSystemRunner(threading.Thread):
     
     def _process_in(self, inp):
         cmd = inp[0]
-        
-        if cmd == 'move':
-            # This is the iffy part...Essentially need to deal with motion model moves
+        # This is the iffy part...Essentially need to deal with motion model moves
             # and moves made by a human user.
+        if cmd == 'move':
             _, angle, distance = struct.unpack(inp[1], inp[2])
-
-            move = None            
-            if angle == 0 and distance == utilRoomba.CmToRoombaDistance(100):
-                # valid translation movement
-                move = self.me.translate(self.fm.get_explorer_pos_mean())
-            elif distance == 0:
-                if angle == int(utilRoomba.DegreesToRoombaAngle(10)):
-                    # valid left movement
-                    move = self.me.left_rotate(self.fm.get_explorer_pos_mean())
-                elif angle == int(utilRoomba.DegreesToRoombaAngle(-10)):
-                    # valid right movement
-                    move = self.me.right_rotate(self.fm.get_explorer_pos_mean())
-            else:
-                # Human, non-motion model movement...should not affect filters.
-                pass
-            
-            
-            # Store the movement made. Only update the filters' positions with the movement
-            # after the roomba has sent the confirmation (in _process_out)
-            self._last_move = move
-        
             self._new_moves.append(inp[2])
+            self._last_move = None
+        if cmd == 'filter_move':
+            _, angle, distance = struct.unpack(inp[1], inp[2])
+            self._new_moves.append(inp[2])
+            self._last_move = inp[3]
         elif cmd == 'pos':
             print 'POS:', inp[1], inp[2]
             self.me.move_to(inp[1], inp[2])
             print 'Current Waypoints:', self.me.get_current_waypoints()
             
-    
-    def _convert_move_id_to_move_cmd(self, id):
-        if id == 1:
-            return '0 100\n'
-        if id == 2:
-            return '10 0\n'
-        if id == 3:
-            return '-10 0\n'
-        
-    
     def run(self):
         #=======================================================================
         # Initialize all threads.
@@ -285,6 +323,7 @@ class FilterSystemRunner(threading.Thread):
             # roomba can perform new move
             self.uout.extend(self.ua.get_output_data())
             if len(self.uout) > 0:
+                time.time()
                 result = self._process_out(self.uout.pop(0))
                 if result is not None:
                     allow_move = result
@@ -311,7 +350,7 @@ class FilterSystemRunner(threading.Thread):
                         # to send it through the CLI, but it would get stuff in the cmdloop's
                         # readline(), thus appending move commands to the CLI cmdqueue failed
                         # because it would not check the cmdqueue until the readline had finished.
-                        self.cli.do_move(self._convert_move_id_to_move_cmd(move.id))
+                        self.cli.do_filter_move(move.id)
                         #time.sleep(0.2)
             
             time.sleep(0.1)
@@ -336,6 +375,7 @@ if __name__ == '__main__':
     #gobject.threads_init() # Need to do this, or gtk will not let go of lock
     
     origin_pos = np.array([200,0,np.deg2rad(90)])
+    #origin_pos = np.array([96.41005535,   1.3773877,    np.deg2rad(7)])
     #origin_pos = np.array([200, 300, np.deg2rad(180)])
     origin_cov = np.eye(3) * 3 # Initial Covariance
     origin_cov[2,2] = 0.02
@@ -353,6 +393,7 @@ if __name__ == '__main__':
         
     
     sysRunner = FilterSystemRunner(serialPort, baudRate, map_obj, origin_pos, origin_cov, gui=duh_gui,
+    #                               run_pf=True, run_kf=False)
                                    run_pf=False, run_kf=True)
     sysRunner.start()
     #if gui:

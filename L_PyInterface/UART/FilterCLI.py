@@ -64,6 +64,49 @@ class FilterCLI(UARTCLI.UARTCLI):
         roombaDistance = int( utilRoomba.CmToRoombaDistance(distance) )
         fmt = 'hhh' # Unsigned Byte / Short / Short
         self._input.append(('move', fmt, struct.pack(fmt, 0, roombaAngle, roombaDistance)))
+        
+    def do_filter_move(self, orig_args):
+        args = orig_args.split( ' ' )
+        
+        nargs = len(args)
+        
+        if nargs < 1:
+            print 'Not enough arguments.'
+            self.help_move()
+            return
+        elif nargs == 1:
+            move_type = int(args[0])
+            if move_type == 1:
+                args = [0, 100]
+            elif move_type == 2:
+                args = [10, 0]
+            elif move_type == 3:
+                args = [-10, 0]
+            else:
+                args = [0, 0]
+        
+        angle = 0
+        distance = 0
+        
+        try:
+            angle = int( args[0] )
+        except:
+            print 'Angle argument is invalid.'
+            self.help_move()
+            return
+        
+        try:
+            distance = int(args[1])
+        except:
+            print 'Distance argument is invalid.'
+            self.help_move()
+            return
+        
+        print angle, distance
+        roombaAngle = int( utilRoomba.DegreesToRoombaAngle(angle) )
+        roombaDistance = int( utilRoomba.CmToRoombaDistance(distance) )
+        fmt = 'hhh' # Unsigned Byte / Short / Short
+        self._input.append(('filter_move', fmt, struct.pack(fmt, 0, roombaAngle, roombaDistance), orig_args))
     
     def help_stop(self):
         print 'syntax: stop',

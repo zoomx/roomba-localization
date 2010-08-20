@@ -48,23 +48,6 @@ class KalmanFilter(Filter.Filter):
         
         self.explorer_cov = np.dot(np.dot(H, self.explorer_cov), H.T) + Q
         
-    def observation(self, obs, sensor):
-        '''
-        Facilitates the update phase in the Kalman Filter. An observation and the 
-        observation's sensor object are provided from which the corresponding update phase
-        aspect of the Kalman Filter is run.
-        
-        @param obs: The observation value from the sensor.
-        @type obs: Sensor dependent
-        
-        @param sensor: The sensor object responsible for the observation.
-        @type sensor: Sensor.Sensor
-        '''
-        if isinstance(sensor, Sensor.BeaconSensor):
-            self._observation_beacon(obs, sensor) 
-        elif isinstance(sensor, Sensor.CompassSensor):
-            self._observation_compass(obs, sensor)
-    
     def _observation_beacon(self, obs, beacon):
         '''
         Fuse beacon range data into the EKF. This is considered part of the update phase.
@@ -105,7 +88,7 @@ class KalmanFilter(Filter.Filter):
             #print 'Explorer Cov:', self.explorer_cov
             #print 'Obs position:', obs_pos
             #print 'OBS Variance:', R
-            return
+            raise
         self.explorer_cov[:2,:2] = R - np.dot(K, R)
         #self.explorer_pos[:2] = self.explorer_pos[:2] + np.dot(K, (self.explorer_pos[:2] - obs_pos))
         self.explorer_pos[:2] = obs_pos + np.dot(K, (self.explorer_pos[:2] - obs_pos))
@@ -130,6 +113,37 @@ class KalmanFilter(Filter.Filter):
         self.explorer_pos[2] = obs_heading + (k * (self.explorer_pos[2] - obs_heading))
         self.explorer_pos[2] = self.explorer_pos[2] % (2*np.pi)
         
+    
+    def _observation_trilateration(self, beacons, tril_sensor):
+        '''
+        
+        '''
+        obs_variance = tril_sensor.observation(None)
+        obs_position = tril_sensor.trilateration(beacons, self.get_explorer_pos())
+        try:
+            K = np.dot(obs_variance, linalg.inv((obs_variance + self.explorer_cov[:2,:2])))
+        except linalg.LinAlgError:
+            #print '-'*50
+            #print 'Explorer Pos:', self.explorer_pos
+            #print 'Explorer Cov:', self.explorer_cov
+            #print 'Obs position:', obs_pos
+            #print 'OBS Variance:', R
+            raise
+        
+        # Position update
+        self.explorer_cov[:2,:2] = obs_variance - np.dot(K, obs_variance)
+        #self.explorer_pos[:2] = self.explorer_pos[:2] + np.dot(K, (self.explorer_pos[:2] - obs_pos))
+        self.explorer_pos[:2] = obs_position + np.dot(K, (self.explorer_pos[:2] - obs_position))
+        
+        # Heading update
+        obs_heading = tril_sensor.trilateration_heading()
+        if obs_heading is None:
+            # Not enough moves in a row to be used.
+            return
+        obs_heading_variance = np.deg2rad(2) # Arbitrary value chosen. Not sure how to properly determine this.
+        K_heading = obs_heading_variance*((obs_heading_variance + self.explorer_cov[2,2])**-1)
+        self.explorer_cov[2,2] = obs_heading_variance - (K_heading*obs_heading_variance)
+        self.explorer_pos[2] = obs_heading - K_heading*(self.explorer_pos[2] - obs_heading)
     
     def draw(self, cr):
         '''

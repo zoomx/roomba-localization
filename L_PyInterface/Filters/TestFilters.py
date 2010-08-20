@@ -128,6 +128,10 @@ class TestThread(threading.Thread):
         self.auto = auto
         
     def _auto_run(self):
+        '''
+        Does not work properly. Use _manual_run.
+        '''
+        
         pthjoin = os.path.join
         
         (translation_model, translation_data, rotation_model, 
@@ -255,7 +259,7 @@ class TestThread(threading.Thread):
             sm.add_sensor(Sensor.BeaconSensor(measurement_model[0], measurement_model[1],
                                                       [0,10000], beacons[i][0], beacons[i][1]))
         sm.add_sensor(Sensor.CompassSensor(0, np.deg2rad(5), [0, np.deg2rad(359.9)]))
-        
+        sm.add_sensor(Sensor.Trilateration2DSensor(None, np.eye(2)*measurement_model[1], None))
         # Move Straight: Vector based on Motion Model measurements
         #translation_vec = [dist_hypot, dist_hypot, translation_model[2,0]]
         translation_vec = translation_model[:,0]
@@ -320,11 +324,8 @@ class TestThread(threading.Thread):
         
         accumulate_distance = np.array([0, 0, 0], np.float32)
         
-        while True:
+        while not self.quit:
             explorer_pos = self.fm.get_explorer_pos_mean()
-            if self.quit:
-                print 'Exiting Thread!'
-                return # Defaults -- Do not move.
     
             # Poll for any new user input.
             waypoints = tg.get_click_positions()
@@ -343,15 +344,23 @@ class TestThread(threading.Thread):
                 # Observations must be independent.
                 if accumulate_distance[0] >= 20:
                     accumulate_distance[0] = 0
+                    
+                    # Testing Trilateration
+                    beacon_sensors = sm.sensors_by_type['Beacon']
+                    prob_pos = self.fm.get_explorer_pos_mean()
+                    
                     for j in range(total_beacons):
-                        prob_pos = self.fm.get_explorer_pos_mean()
+                        #prob_pos = self.fm.get_explorer_pos_mean()
                         obs_dis = np.sqrt((beacons[j][0] - prob_pos[0])**2 + (beacons[j,1] - prob_pos[1])**2) + (randn() * measurement_model[1]) + measurement_model[0]
-                        self.fm.observation(obs_dis, sm.sensors_by_type['Beacon'][j])
-                        
+                        #self.fm.observation(obs_dis, sm.sensors_by_type['Beacon'][j])
+                        beacon_sensors[j].obs = obs_dis
+                    
+                    
+                    self.fm.observation(beacon_sensors, sm.sensors_by_type['Trilateration2D'][0])
                     
                 if accumulate_distance[2] >= np.deg2rad(10):
                     explorer_pos = self.fm.get_explorer_pos_mean()
-                    self.fm.observation(explorer_pos[2] + (randn() * sm.sensors_by_type['Compass'][0].variance), sm.sensors_by_type['Compass'][0])
+                    #self.fm.observation(explorer_pos[2] + (randn() * sm.sensors_by_type['Compass'][0].variance), sm.sensors_by_type['Compass'][0])
                     accumulate_distance[2] = 0
             
             time.sleep(0.1)
@@ -377,8 +386,8 @@ if __name__ == '__main__':
     
     run_kf = False
     run_pf = False
-    run_kf = True
-    #run_pf = True
+    #run_kf = True
+    run_pf = True
     if run_kf:
         fm.add_filter(KalmanFilter.KalmanFilter(origin_pos, origin_cov))
     if run_pf:
