@@ -108,7 +108,7 @@ void read_packet()
 	}
 
 	Serial.print("IPkt ");
-	snprintf(output, sizeof(output), "%d %d |", inf_packet.angle, inf_packet.distance);
+	snprintf(output, sizeof(output), "%d %d %d|", inf_packet.angle, inf_packet.distance, inf_packet.compass);
 	Serial.print(output);
 	int i;
 	for (i = 0; i < TOTAL_BEACONS; ++i)
