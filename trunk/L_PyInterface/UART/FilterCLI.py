@@ -146,7 +146,7 @@ class FilterCLI(UARTCLI.UARTCLI):
     def do_wait(self, arg):
         wait_time = 0
         try:
-            wait_time = float(arg) / 1000
+            wait_time = float(arg) / 1000.
         except:
             print 'Delay argument is invalid.'
             self.help_wait()

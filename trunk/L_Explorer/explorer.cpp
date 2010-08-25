@@ -72,14 +72,16 @@ void send_packet()
 	if (result != RADIO_TX_SUCCESS)
 	{
 		Roomba_ConfigStatusLED(AMBER);
-		while (1)
+		uint8_t counter = 0;
+		while (counter < 20)
 		{
-			delay(500);
+			delay(100);
 			result = Radio_Transmit(&packet, RADIO_WAIT_FOR_TX);
 			if (result == RADIO_TX_SUCCESS)
 			{
 				break;
 			}
+			++counter;
 		}
 		Roomba_ConfigStatusLED(STATUS_LED_OFF);
 	}
@@ -117,8 +119,16 @@ int main()
 	// this routine can be enabled to perform an infinite ping test on a given beacon.
 	//beacon_test_routine(2);
 
+	uint16_t start_time = millis16();
 	for (;;)
 	{
+		if (millis16() - start_time > 1200)
+		{
+			// Helps determine if the explorer has hung.
+			flip_LED();
+			start_time = millis16();
+		}
+
 		// Move packet received
 		if (radio_state == BASE_PACKET_READY)
 		{

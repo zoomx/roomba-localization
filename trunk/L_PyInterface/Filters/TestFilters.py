@@ -163,6 +163,7 @@ class TestThread(threading.Thread):
         
         moves = []
         
+        print 'D.TF.166'
         explorer_pos = self.fm.get_explorer_pos_mean()
         while not self.quit:
             transition_vec = still_vec
@@ -280,7 +281,7 @@ class TestThread(threading.Thread):
         
         #turn_leniency = np.deg2rad(10) # Used as an error judgement for deciding when to turn
         
-        
+        print 'D.TF.284'
         explorer_pos = self.fm.get_explorer_pos_mean()
         me = MoveExplorer(explorer_pos, [12, 12, np.deg2rad(6)], debug=True,
                           translation_moves=[Movement(translation_vec, translation_cov),
@@ -325,8 +326,6 @@ class TestThread(threading.Thread):
         accumulate_distance = np.array([0, 0, 0], np.float32)
         
         while not self.quit:
-            explorer_pos = self.fm.get_explorer_pos_mean()
-    
             # Poll for any new user input.
             waypoints = tg.get_click_positions()
             
@@ -335,7 +334,8 @@ class TestThread(threading.Thread):
             
             transition_mov = me.get_next_move(explorer_pos)
             if transition_mov is not None:
-                #explorer_pos += transition_mov.vec
+                print 'D.TF.337'
+                explorer_pos = self.fm.get_explorer_pos_mean()
                 self.fm.move(transition_mov.vec, transition_mov.cov)
                 accumulate_distance += np.abs(transition_mov.vec)
                 time.sleep(0.5)
@@ -347,6 +347,7 @@ class TestThread(threading.Thread):
                     
                     # Testing Trilateration
                     beacon_sensors = sm.sensors_by_type['Beacon']
+                    print 'D.TF.351'
                     prob_pos = self.fm.get_explorer_pos_mean()
                     
                     for j in range(total_beacons):
@@ -359,6 +360,7 @@ class TestThread(threading.Thread):
                     self.fm.observation(beacon_sensors, sm.sensors_by_type['Trilateration2D'][0])
                     
                 if accumulate_distance[2] >= np.deg2rad(10):
+                    print 'D.TF.364'
                     explorer_pos = self.fm.get_explorer_pos_mean()
                     #self.fm.observation(explorer_pos[2] + (randn() * sm.sensors_by_type['Compass'][0].variance), sm.sensors_by_type['Compass'][0])
                     accumulate_distance[2] = 0

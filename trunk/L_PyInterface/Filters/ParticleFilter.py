@@ -67,13 +67,14 @@ class ParticleFilter(Filter.Filter):
             transition_sample = util.mvnrnd(p_move_vec, p_move_cov)
             # Xk(L) = p(Xk-1(L),yk) // ignoring the ',yk' for now
             self.particles[L,:] = self.particles[L,:] + transition_sample
-            self.particles[L,2] = self.particles[L,2] % (2 * np.pi)
+            #self.particles[L,2] = self.particles[L,2] % (2 * np.pi)
         
     def _observation_beacon(self, obs, beacon):
         #=======================================================================
         # Weight samples against observation model
         #=======================================================================
         # This could potentially be optimized
+        self.weight = self.equal_weight(self.total_particles)
         for L in range(self.total_particles):
             # ~wk(L) = wk-1(L) * p(yk|xk(L))
             # In other words, compute a new weight based on the particles
@@ -111,11 +112,16 @@ class ParticleFilter(Filter.Filter):
     def _observation_trilateration(self, beacons, tril_sensor):
         obs_variance = tril_sensor.observation(None)
         obs_position = tril_sensor.trilateration(beacons, self.get_explorer_pos())
+        if np.any(map(np.isnan, obs_position)):
+            # If is testing if any of the values are nan.
+            # Bug that can occur when ranges don't intersect, hacky fix (apologies).
+            tril_sensor._pos_history = []
+            return
+        
+        self.weight = self.equal_weight(self.total_particles)
+        
         # Heading update
         obs_heading = tril_sensor.trilateration_heading()
-        if obs_heading is None:
-            # Not enough moves in a row to be used.
-            return
         obs_heading_variance = np.deg2rad(2) # Arbitrary value chosen. Not sure how to properly determine this.
         for L in range(self.total_particles):
             # ~wk(L) = wk-1(L) * p(yk|xk(L))
@@ -144,7 +150,7 @@ class ParticleFilter(Filter.Filter):
 
         # Do we need to resample?
         if Neff < self.total_particles:
-            index_set = []
+            #index_set = []
             # Copy size-> can this be optimized?
             new_particles = np.zeros([self.total_particles, 3])
             # Now resample...
@@ -155,11 +161,13 @@ class ParticleFilter(Filter.Filter):
                 new_particles[p,:] = self.particles[index,:]
 
             #index_set = unique( index );
-            self.particles[index_set,:]
+            #self.particles[index_set,:]
             self.particles = new_particles
     
     def get_explorer_pos(self):
+        #print 'PF168: (PARTICLES VARIANCE):', self.particles.var(axis=0)
         return self.particles.mean(axis=0)
+        #return np.average(self.particles, axis=0, weights=self.weight)
     
     def equal_weight(self, N):
         '''
@@ -220,14 +228,15 @@ class ParticleFilter(Filter.Filter):
     def draw(self, cr):
         cr.set_line_width(2)
         cr.set_source_rgba(0.4, 0, 0, 0.3)
-        '''
+        #'''
         for part in self.particles:
             cr.move_to(part[0], part[1])
             cr.rel_line_to(0.1, 0.1)
             cr.stroke()
-        '''
+        #'''
+        print 'D.PF.237: Draw'
         self.explorer_pos = self.get_explorer_pos()
-        self._draw_explorer(cr)
+        #self._draw_explorer(cr)
         self._draw_heading(cr)
         
     

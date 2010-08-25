@@ -34,7 +34,7 @@ radiopacket_t packet;
 volatile uint8_t radio_received_flag = 0;
 volatile uint8_t sent_time = 0;
 volatile uint8_t sent_packet_flag = 0;
-uint8_t current_msg_seq = 0;
+uint16_t current_msg_seq = 0;
 
 
 // Used by Serial
@@ -125,6 +125,7 @@ void read_packet()
 
 void send_packet()
 {
+
 	packet.type = MOVE_ROOMBA;
 	memcpy(&packet.payload.move, &uart_command, sizeof(uart_command));
 	packet.payload.move.seq = current_msg_seq;
@@ -132,15 +133,20 @@ void send_packet()
 	if (result != RADIO_TX_SUCCESS)
 	{
 		uint8_t retry_counter;
-		for (retry_counter = 0; retry_counter < 20; ++retry_counter)
+		for (retry_counter = 0; retry_counter < 7; ++retry_counter)
 		{
-			//Serial.println("Retransmit.");
-			delay(500);
-
+			Serial.println("Retransmit.");
+			delay(100);
+			flip_LED();
 			result = Radio_Transmit(&packet, RADIO_WAIT_FOR_TX);
 			if (result == RADIO_TX_SUCCESS)
 			{
 				break;
+			}
+			else if (radio_received_flag)
+			{
+				// May have sent successfully but never got ACK
+				return;
 			}
 		}
 		Serial.println("Failed to send packet.");
@@ -153,7 +159,6 @@ void send_packet()
 
 void loop()
 {
-
 	// Check For new user commands
 	if(Serial.available() >= sizeof(pf_move_roomba_t))
 	{
@@ -199,6 +204,7 @@ void loop()
 		{
 			snprintf(output, sizeof(output), "Error: seq (%d)", packet.type);
 			Serial.println(output);
+
 		}
 		else
 		{
@@ -213,9 +219,16 @@ int main(void)
 
 	setup();
 
+	uint16_t start_time = millis16();
 	for (;;)
+	{
+		//if (millis16() - start_time > 1200)
+		//{
+		//	flip_LED();
+		//	start_time = millis16();
+		//}
 		loop();
-
+	}
 	return 0;
 }
 

@@ -3,6 +3,8 @@ systemRunner.py
 River Allen
 June 7, 2010
 
+@bug: GUI is not working. Play with TestFilters if you want to simulate the filters.
+
 @todo: Fix configuration, so it is in a more suitable format (.ini for example)
 @todo: Add a timeout where if no beacon data is received...assume beacon ranges are -1...
 (i.e. go off motion model)
@@ -61,8 +63,7 @@ class FilterSystemRunner(threading.Thread):
         '''
         super(FilterSystemRunner, self).__init__()
         self.quit = False
-        self._move_performed = True
-        self._move_timeout = 5
+        self.allow_move_timer = 0
         #=======================================================================
         # UART
         #=======================================================================
@@ -135,8 +136,8 @@ class FilterSystemRunner(threading.Thread):
         left_rot_mov = Movement.Movement(left_rotation_vec, rotation_cov, id='10 0\n')
         right_rot_mov = Movement.Movement(right_rotation_vec, rotation_cov, id='-10 0\n')
         rotation_moves = [left_rot_mov, right_rot_mov,
-                          Movement.Movement(np.array([0,0,np.deg2rad(-5)]), rotation_cov, id='-3 0\n'),
-                          Movement.Movement(np.array([0,0,np.deg2rad(5)]), rotation_cov, id='3 0\n')]
+                          Movement.Movement(np.array([0,0,np.deg2rad(-5)]), rotation_cov, id='-4 0\n'),
+                          Movement.Movement(np.array([0,0,np.deg2rad(5)]), rotation_cov, id='4 0\n')]
         
         explorer_pos = self.fm.get_explorer_pos_mean()
         self.me = Movement.MoveExplorer(explorer_pos, [11, 11, np.deg2rad(6)], 
@@ -323,7 +324,6 @@ class FilterSystemRunner(threading.Thread):
             # roomba can perform new move
             self.uout.extend(self.ua.get_output_data())
             if len(self.uout) > 0:
-                time.time()
                 result = self._process_out(self.uout.pop(0))
                 if result is not None:
                     allow_move = result
@@ -332,16 +332,18 @@ class FilterSystemRunner(threading.Thread):
             # Any new movements? --> send to roomba
             self.uin.extend(self.ua.get_input_data())
             if len(self.uin) > 0:
-                self._process_in(self.uin.pop(0))
+                for inp in self.uin[:]:
+                    self._process_in(self.uin.pop(0))
             
             # Can roomba move?
             if allow_move:
                 # Any new? --> queue command for roomba
                 if len(self._new_moves) > 0:
+                    allow_move = False
+                    self.allow_move_timer = time.time()
                     move_struct = self._new_moves.pop(0)
                     # send oldest command to base
                     self.ua.add_data_to_write([move_struct])
-                    allow_move = False
                 else:
                     # Poll Movements
                     move = self.me.get_next_move(self.fm.get_explorer_pos_mean())
@@ -351,8 +353,9 @@ class FilterSystemRunner(threading.Thread):
                         # readline(), thus appending move commands to the CLI cmdqueue failed
                         # because it would not check the cmdqueue until the readline had finished.
                         self.cli.do_filter_move(move.id)
-                        #time.sleep(0.2)
-            
+                        #time.sleep(1)
+            elif abs(time.time() - self.allow_move_timer) > 15:
+                allow_move = True
             time.sleep(0.1)
         self.exit()
         
@@ -385,16 +388,8 @@ if __name__ == '__main__':
     #===========================================================================
     # Run
     #===========================================================================
-    gui = False
-    if gui:
-        duh_gui = roombaGUI.RoombaLocalizationGUI(map_obj=map_obj)
-    else:
-        duh_gui = None
-        
-    
+    duh_gui = None
     sysRunner = FilterSystemRunner(serialPort, baudRate, map_obj, origin_pos, origin_cov, gui=duh_gui,
     #                               run_pf=True, run_kf=False)
                                    run_pf=False, run_kf=True)
     sysRunner.start()
-    #if gui:
-    #    duh_gui.mainloop()

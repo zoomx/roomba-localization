@@ -120,6 +120,11 @@ class KalmanFilter(Filter.Filter):
         '''
         obs_variance = tril_sensor.observation(None)
         obs_position = tril_sensor.trilateration(beacons, self.get_explorer_pos())
+        if np.any(map(np.isnan, obs_position)):
+            # If is testing if any of the values are nan.
+            # Bug that can occur when ranges don't intersect, hacky fix (apologies).
+            tril_sensor._pos_history = []
+            return
         try:
             K = np.dot(obs_variance, linalg.inv((obs_variance + self.explorer_cov[:2,:2])))
         except linalg.LinAlgError:

@@ -45,7 +45,15 @@ uint16_t ping_beacon(uint8_t beacon_id)
 	}
 
 	// wait for its response
-	while (radio_state != BEACON_PACKET_READY);
+	uint32_t start_time = millis();
+	while (radio_state != BEACON_PACKET_READY)
+	{
+		if (millis() - start_time > 100)
+		{
+			return 1;
+		}
+	}
+
 
 	// start counting the sonar delay
 	Sonar_Trigger();
