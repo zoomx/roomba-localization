@@ -81,21 +81,6 @@ class MoveExplorer(object):
     def move_to(self, x, y):
         self._waypoints.append([x, y])
     
-    def translate(self, explorer_pos):
-        explorer_angle = explorer_pos[2] %(2 * np.pi)
-        return util.affine_transform(explorer_angle, self.translation_movement.vec, 
-                                         self.translation_movement.cov)
-    
-    def right_rotate(self, explorer_pos):
-        explorer_angle = explorer_pos[2] %(2 * np.pi)
-        return util.affine_transform(explorer_angle, self.right_rotation_movement.vec, 
-                                         self.right_rotation_movement.cov)
-    
-    def left_rotate(self, explorer_pos):
-        explorer_angle = explorer_pos[2] %(2 * np.pi)
-        return util.affine_transform(explorer_angle, self.left_rotation_movement.vec, 
-                                         self.left_rotation_movement.cov)
-        
     def get_current_waypoints(self):
         return self._waypoints
     

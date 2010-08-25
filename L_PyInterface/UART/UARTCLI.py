@@ -49,6 +49,45 @@ class UARTCLI(cmd.Cmd, UARTInput.UARTInput):
 	def do_nothing(self, args):
 		pass
 	
+	def help_batch(self):
+		self.help_batch_syntax()
+		print '-- Runs a file with commands seperated by newlines.'
+		print 'Example File test1.txt:'
+		print '-'*50
+		print 'nothing'
+		print 'help'
+		print 'nothing'
+		print '# This is a comment, "%" must be the first char on the newline'
+		print '-'*50
+		print 'Thus, running "batch test1.txt" will run all of the commands in test1.txt'
+		
+	def help_batch_syntax(self):
+		print 'syntax: batch <filename>'
+		
+	def do_batch(self, passed_args):
+		args = passed_args.split(' ')
+		if args == ['']:
+			self.help_batch()
+			return
+		if len(args) != 1:
+			print 'Incorrect number of arguments.'
+			self.help_batch_syntax()
+			return
+	
+		filename = args[0]
+		# batch ..\batch\test.txt
+		try:
+			with open(filename, 'r') as batch_file:
+				for line in batch_file:
+					if line[0] == '#':
+						continue
+					self.cmdqueue.append(line)
+					
+		except IOError:
+			print 'The file %s could not be opened or does not exist.' %(filename)
+		except:
+			raise
+	
 	def run_cmd(self, cmds):
 		'''
 		Note: Does not fully work yet.
