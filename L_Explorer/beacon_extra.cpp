@@ -48,7 +48,7 @@ uint16_t ping_beacon(uint8_t beacon_id)
 	uint32_t start_time = millis();
 	while (radio_state != BEACON_PACKET_READY)
 	{
-		if (millis() - start_time > 100)
+		if (millis() - start_time > 200)
 		{
 			return 1;
 		}

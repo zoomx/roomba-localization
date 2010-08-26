@@ -116,8 +116,6 @@ void read_packet()
 		snprintf(output, sizeof(output), "%d ", inf_packet.beacon_distance[i]);
 		Serial.print(output);
 	}
-	// println(output)
-	//snprintf(output, sizeof(output), "%d", inf_packet.beacon_distance[0]);
 	Serial.println();
 	sent_packet_flag = 0;
 	++current_msg_seq;
@@ -133,7 +131,7 @@ void send_packet()
 	if (result != RADIO_TX_SUCCESS)
 	{
 		uint8_t retry_counter;
-		for (retry_counter = 0; retry_counter < 7; ++retry_counter)
+		for (retry_counter = 0; retry_counter < 20; ++retry_counter)
 		{
 			Serial.println("Retransmit.");
 			delay(100);
@@ -148,6 +146,7 @@ void send_packet()
 				// May have sent successfully but never got ACK
 				return;
 			}
+			//Radio_Flush();
 		}
 		Serial.println("Failed to send packet.");
 		return;

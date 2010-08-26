@@ -68,7 +68,7 @@ class FilterSystemRunner(threading.Thread):
         # UART
         #=======================================================================
         self.cli = FilterCLI.FilterCLI()
-        self.ua = UARTSystem.UART(serial_port, baud_rate, uart_input=self.cli, approve=True)
+        self.ua = UARTSystem.UART(serial_port, baud_rate, uart_input=self.cli, approve=True, debug=True)
         self.uin = [] # uart input from user
         self.uout = [] # uart output from base/roomba
         
