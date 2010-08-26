@@ -1,0 +1,16 @@
+README
+Author: River Allen
+Contact: riverallen@gmail.com
+Date: August 26, 2010
+
+1) Install python-2.6.msi (if not already installed)
+2) Install pyserial-2.5-rc2.win32.exe
+3) Install pygame-1.9.2a0.win32-py2.6.msi
+4) Install numpy-1.4.1-win32-superpack-python2.6.exe
+5) Install scipy-0.8.0b1-win32-superpack-python2.6.exe
+4) Install glade3-3.6.7-with-GTK+.exe
+5) Install pygtk-2.16.0+glade.win32-py2.6.exe
+6) Install pycairo-1.8.6.win32-py2.6.exe
+7) Install pygobject-2.20.0.win32-py2.6.exe
+
+You will need to change globalConfig.py to match the COM port (and perhaps baudRate).
