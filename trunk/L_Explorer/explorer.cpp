@@ -39,23 +39,9 @@
  */
 
 // millis() returns uint32_t, I prefer working in uint16_t.
+
+//#define USE_BASE // Uncomment this out if base station is being used.
 #define millis16() ((millis() & 0xFFFF))
-
-typedef enum _rs
-{
-	NO_PACKET,
-	BEACON_PACKET_READY,
-	BASE_PACKET_READY,
-} RADIO_STATE;
-
-char output[64];
-
-volatile RADIO_STATE radio_state = NO_PACKET;
-radiopacket_t packet;
-
-uint8_t explorer_beaconrx_address[RADIO_ADDRESS_LENGTH] = {0xB7, 0xB7, 0xB7, 0xB7, 0xFF};
-uint8_t explorer_baserx_address[RADIO_ADDRESS_LENGTH] = {0xB4, 0xB4, 0xB4, 0xB4, 0xFF};
-uint8_t base_address[RADIO_ADDRESS_LENGTH] = {0xB4, 0xB4, 0xB4, 0xB4, 1};
 
 uint8_t radioPowerPin = 9;
 uint8_t ledPin = 13;
@@ -63,7 +49,22 @@ uint8_t ledPin = 13;
 
 #define TOTAL_BEACONS	3	// can't fit more than 12 beacons in log packet
 int16_t beacon_distances[TOTAL_BEACONS];
+uint8_t explorer_beaconrx_address[RADIO_ADDRESS_LENGTH] = {0xB7, 0xB7, 0xB7, 0xB7, 0xFF};
+#define BUF_LEN 64
+char output[BUF_LEN];
 
+typedef enum _rs
+{
+	NO_PACKET,
+	BEACON_PACKET_READY,
+	BASE_PACKET_READY,
+} RADIO_STATE;
+volatile RADIO_STATE radio_state = NO_PACKET;
+radiopacket_t packet;
+
+#ifdef USE_BASE
+uint8_t explorer_baserx_address[RADIO_ADDRESS_LENGTH] = {0xB4, 0xB4, 0xB4, 0xB4, 0xFF};
+uint8_t base_address[RADIO_ADDRESS_LENGTH] = {0xB4, 0xB4, 0xB4, 0xB4, 1};
 uint16_t expected_msg_seq = 0;
 
 void send_packet()
@@ -81,11 +82,42 @@ void send_packet()
 			{
 				break;
 			}
+			if (radio_state == BASE_PACKET_READY)
+			{
+				break;
+			}
 			++counter;
 		}
 		Roomba_ConfigStatusLED(STATUS_LED_OFF);
 	}
 }
+#else
+pf_move_roomba_t uart_command;
+uint8_t data[BUF_LEN];
+void read_serial(uint8_t len)
+{
+	int i = 0;
+	while(i < len && i < BUF_LEN)
+	{
+		data[i] = Serial.read();
+		++i;
+	}
+	memcpy(&uart_command, data, sizeof(uart_command));
+}
+
+void echo_serial()
+{
+	Serial.print("RE: ");
+	Serial.print(data[0]);
+	Serial.print(data[1]);
+	Serial.print(data[2]);
+	Serial.print(data[3]);
+	snprintf(output, sizeof(output), "RE: %d %d", uart_command.angle, uart_command.distance);
+	Serial.println(output);
+}
+
+#endif
+
 
 int main()
 {
@@ -111,7 +143,9 @@ int main()
 	Radio_Init();
 	Radio_Configure(RADIO_2MBPS, RADIO_HIGHEST_POWER);
 	Radio_Configure_Rx(RADIO_PIPE_0, explorer_beaconrx_address, ENABLE);
+#ifdef USE_BASE
 	Radio_Configure_Rx(RADIO_PIPE_1, explorer_baserx_address, ENABLE);
+#endif
 	Roomba_ConfigDirtDetectLED(LED_ON);
 
 	Compass_Init();
@@ -129,6 +163,7 @@ int main()
 			start_time = millis16();
 		}
 
+#ifdef USE_BASE
 		// Move packet received
 		if (radio_state == BASE_PACKET_READY)
 		{
@@ -191,7 +226,36 @@ int main()
 			{
 				// Error or Ignore
 			}
+#else
+		if(Serial.available() >= sizeof(pf_move_roomba_t))
+		{
+			//uint8_t incoming_length = Serial.available();
+
+			// Read the data off the serial into packet
+			read_serial(sizeof(pf_move_roomba_t));
+			// For debugging purposes. Write back to PC to ensure it is getting it correctly.
+			echo_serial();
+
+			rotate_roomba(uart_command.angle);
+			translate_roomba(uart_command.distance);
+			Roomba_Drive(0, 0); // Stop
+			poll_beacons(beacon_distances, TOTAL_BEACONS);
+			int16_t angle = Roomba_GetTotalAngle();
+			int16_t distance = Roomba_GetTotalDistance();
+			uint16_t compass = Compass_GetReading();
+			Serial.print("IPkt ");
+			snprintf(output, sizeof(output), "%d %d %d|", angle, distance, compass);
+			Serial.print(output);
+			int i;
+			for (i = 0; i < TOTAL_BEACONS; ++i)
+			{
+				snprintf(output, sizeof(output), "%d ", beacon_distances[i]);
+				Serial.print(output);
+			}
+			Serial.println();
 		}
+#endif
+
 	}
 
 	for (;;);
