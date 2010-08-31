@@ -102,17 +102,12 @@ void read_serial(uint8_t len)
 		data[i] = Serial.read();
 		++i;
 	}
-	memcpy(&uart_command, data, sizeof(uart_command));
+	memcpy(&uart_command, data, sizeof(pf_move_roomba_t));
 }
 
 void echo_serial()
 {
-	Serial.print("RE: ");
-	Serial.print(data[0]);
-	Serial.print(data[1]);
-	Serial.print(data[2]);
-	Serial.print(data[3]);
-	snprintf(output, sizeof(output), "RE: %d %d", uart_command.angle, uart_command.distance);
+	snprintf(output, sizeof(output), "%d %d", uart_command.angle, uart_command.distance);
 	Serial.println(output);
 }
 
@@ -146,10 +141,10 @@ int main()
 #ifdef USE_BASE
 	Radio_Configure_Rx(RADIO_PIPE_1, explorer_baserx_address, ENABLE);
 #endif
-	Roomba_ConfigDirtDetectLED(LED_ON);
+
 
 	Compass_Init();
-
+	Roomba_ConfigDirtDetectLED(LED_ON);
 	// this routine can be enabled to perform an infinite ping test on a given beacon.
 	//beacon_test_routine(2);
 
@@ -235,16 +230,19 @@ int main()
 			read_serial(sizeof(pf_move_roomba_t));
 			// For debugging purposes. Write back to PC to ensure it is getting it correctly.
 			echo_serial();
-
-			rotate_roomba(uart_command.angle);
-			translate_roomba(uart_command.distance);
+			//snprintf(output, sizeof(output), "Ang: %d,  Dist: %d", uart_command.angle, uart_command.distance);
+			Serial.println(output);
+			//rotate_roomba(uart_command.angle);
+			//translate_roomba(uart_command.distance);
 			Roomba_Drive(0, 0); // Stop
+			pf_log_data_t reply_command;
+			reply_command.angle = Roomba_GetTotalAngle();
+			reply_command.distance = Roomba_GetTotalDistance();
+			reply_command.compass = 0;
 			poll_beacons(beacon_distances, TOTAL_BEACONS);
-			int16_t angle = Roomba_GetTotalAngle();
-			int16_t distance = Roomba_GetTotalDistance();
-			uint16_t compass = Compass_GetReading();
+			memcpy(reply_command.beacon_distance, beacon_distances, sizeof(int16_t)*TOTAL_BEACONS);
 			Serial.print("IPkt ");
-			snprintf(output, sizeof(output), "%d %d %d|", angle, distance, compass);
+			snprintf(output, sizeof(output), "%d %d %d|", reply_command.angle, reply_command.distance, reply_command.compass);
 			Serial.print(output);
 			int i;
 			for (i = 0; i < TOTAL_BEACONS; ++i)
