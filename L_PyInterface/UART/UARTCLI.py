@@ -75,7 +75,7 @@ class UARTCLI(cmd.Cmd, UARTInput.UARTInput):
 			return
 	
 		filename = args[0]
-		# batch ..\batch\test.txt
+
 		try:
 			with open(filename, 'r') as batch_file:
 				for line in batch_file:

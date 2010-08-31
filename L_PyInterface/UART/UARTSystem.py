@@ -141,10 +141,6 @@ class UART(threading.Thread):
 
 	def add_data_to_write(self, cmds):
 		with self._write_lock:
-			if self.debug:
-				print 'US137: Kaplah!'
-				print self._write_data_buffer
-				print cmds
 			if type(cmds) == list:
 				self._write_data_buffer.extend(cmds)
 			else:
@@ -171,7 +167,7 @@ class UART(threading.Thread):
 				
 		self._close_serial()
 		if self.debug:
-			print "EXITING..."
+			print "Exiting..."
 	
 	def _close_serial(self):			
 		'''
@@ -273,21 +269,21 @@ class UARTOutput(threading.Thread):
 				if len(val) > 0:
 					temp_buffer += val
 
-					# Need to do this as incomplete lines can be read.
-					# In addition, may read complete line + incomplete line
-					# or two complete lines.
-					if newline in temp_buffer:
-						# Get the index of the point where to cut data+newline
-						n_index = temp_buffer.index(newline) + len(newline)
-						# Store/Log new data
-						newest_data = temp_buffer[:n_index]
-						with self._lock:
-							self._received_data.append(newest_data)
+				# Need to do this as incomplete lines can be read.
+				# In addition, may read complete line + incomplete line
+				# or two complete lines.
+				if newline in temp_buffer:
+					# Get the index of the point where to cut data+newline
+					n_index = temp_buffer.index(newline) + len(newline)
+					# Store/Log new data
+					newest_data = temp_buffer[:n_index]
+					with self._lock:
 						if self.debug:
 							print 'RE:', newest_data
-						temp_buffer = temp_buffer[n_index:]
-					else:
-						pass
+						self._received_data.append(newest_data)
+					temp_buffer = temp_buffer[n_index:]
+				else:
+					pass
 				
 				time.sleep(0.01)
 		finally:

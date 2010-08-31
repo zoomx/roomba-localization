@@ -14,17 +14,18 @@ June 7, 2010
 import threading
 import logging
 import numpy as np
-from warnings import warn
-try:
-    import gobject
-except:
-    warn('Cannot import gobject. Thus, the GUI cannot be used.')
+
 import os
 import time
 import struct
 from UART import UARTSystem
 from UART import FilterCLI
-import roombaGUI
+try:
+    import roombaGUI
+    import gobject
+except:
+    from warnings import warn
+    warn('Cannot import gobject. Thus, the GUI cannot be used.')
 import Map
 from Filters import FilterManager, KalmanFilter, ParticleFilter
 import Sensor
@@ -103,7 +104,7 @@ class FilterSystemRunner(threading.Thread):
                                                       [0,10000], self.beacons[i][0], self.beacons[i][1]))
         
         # Trilateration will be used if 2 or more beacons yield readings.
-        self.sm.add_sensor(Sensor.Trilateration2DSensor(measurement_model[0], np.eye(2)*measurement_model[1], None))
+        self.sm.add_sensor(Sensor.Trilateration2DSensor(measurement_model[0], np.eye(2)*15,None))#measurement_model[1], None))
         
         
         #=======================================================================
@@ -354,8 +355,9 @@ class FilterSystemRunner(threading.Thread):
                         # because it would not check the cmdqueue until the readline had finished.
                         self.cli.do_filter_move(move.id)
                         #time.sleep(1)
-            elif abs(time.time() - self.allow_move_timer) > 15:
-                allow_move = True
+#            elif abs(time.time() - self.allow_move_timer) > 15:
+#                allow_move = True
+#                pass
             time.sleep(0.1)
         self.exit()
         
