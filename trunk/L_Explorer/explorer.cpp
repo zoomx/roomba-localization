@@ -232,8 +232,8 @@ int main()
 			echo_serial();
 			//snprintf(output, sizeof(output), "Ang: %d,  Dist: %d", uart_command.angle, uart_command.distance);
 			Serial.println(output);
-			//rotate_roomba(uart_command.angle);
-			//translate_roomba(uart_command.distance);
+			rotate_roomba(uart_command.angle);
+			translate_roomba(uart_command.distance);
 			Roomba_Drive(0, 0); // Stop
 			pf_log_data_t reply_command;
 			reply_command.angle = Roomba_GetTotalAngle();
