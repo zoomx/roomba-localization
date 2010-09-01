@@ -39,10 +39,14 @@ class UART(threading.Thread):
 		to get should be in struct.pack format. None by default.
 		@type uart_input: UARTInput.UARTInput
 		
-		@param approve: 
+		@param approve: This was an option devised if a CLI is being used. If it is False, 
+		whatever a UARTInput produces will be sent across UART immediately. If it is set True,
+		only data added to add_data_to_write() will be written. This provides the ability to approve
+		of UARTInput data before it is sent, as well as allow UARTInput commands to be written directly
+		for simpler systems. 
 		@type approve: bool
 		
-		@param debug: 
+		@param debug: Prints all debug information.
 		@type debug: bool
 		'''
 		super(UART, self).__init__()
@@ -51,7 +55,7 @@ class UART(threading.Thread):
 		self.quit = False
 		self.debug = debug
 		
-		# Locks -- Needed as separate threads can access data.
+		# Locks -- Needed so separate threads can access data.
 		self._input_lock = threading.Lock()
 		self._output_lock = threading.Lock()
 		self._write_lock = threading.Lock()
@@ -107,7 +111,7 @@ class UART(threading.Thread):
 		'''
 		with self._output_lock:
 			r_data = self._output_data_buffer
-			self._output_data_buffer = []
+			del self._output_data_buffer[:]
 			return r_data
 	
 	def set_output_data(self, dat):
@@ -126,7 +130,7 @@ class UART(threading.Thread):
 		'''
 		with self._input_lock:
 			r_data = self._input_data_buffer
-			self._input_data_buffer = []
+			del self._input_data_buffer[:]
 			return r_data
 	
 	def set_input_data(self, dat):
