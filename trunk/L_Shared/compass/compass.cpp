@@ -10,7 +10,7 @@
 #include "compass.h"
 #include "../arduino/WProgram.h"
 #include "../arduino/Wire.h"
-#include "../roomba/roomba.h"
+//#include "../roomba/roomba.h"
 
 #define ADDRESS (0x42 >> 1)
 

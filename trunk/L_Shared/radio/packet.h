@@ -49,7 +49,8 @@ typedef struct _ld
 	uint16_t seq;				/// This was deemed necessary in-order to include some basic flow control
 	int16_t angle;				 /// Angle Roomba moved (in Roomba format)
 	int16_t distance;			 /// Distance Roomba moved (in mm)
-	int16_t beacon_distance[11];/// Distance from Roomba to each beacon
+	uint16_t compass;			/// Reading from the compass (0-3599)
+	int16_t beacon_distance[10];/// Distance from Roomba to each beacon
 } pf_log_data_t;
 
 typedef struct _me
