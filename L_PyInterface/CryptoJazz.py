@@ -15,11 +15,9 @@ class Cryptographer(object):
     '''Cryptography provider for Roomba explorer project'''
     cryptoProvider = None
 
-    def __init__(self):
+    def __init__(self, key):
         # assuming "secret.key" exists and contains a key between 8 and 56 bytes long
         #TODO: sanity checking (file existence, key length)
-        f = open("secret.key", "rb")
-        key = f.read()
         self.cryptoProvider = blowfish.Blowfish(key)
         
     def encrypt(self, message):
