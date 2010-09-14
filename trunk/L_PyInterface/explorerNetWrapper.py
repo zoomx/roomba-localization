@@ -28,7 +28,8 @@ def doCommand(message):
     #return systemRunner.stdout.read() #TODO: wait for entire message
     return "Success"
     
-cryptographer = Cryptographer()
+# should probably change the password in the local copy.  The password must be 8-56 bytes long.
+cryptographer = Cryptographer("dummy_password")
 
 HOST = ''
 PORT = 64128

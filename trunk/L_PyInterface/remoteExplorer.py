@@ -23,10 +23,11 @@ moveCmdRE = re.compile(r"^move\s+\d+\s+\d+$")
 posCmdRE = re.compile(r"^pos\s+\d+\s+\d+$")
 exitCmdRE = re.compile(r"^exit$")
 
-cryptographer = Cryptographer()
+HOST = raw_input("Enter explorer host address: ").strip()    # The remote host
+key = raw_input("Enter password: ")
 
-print "Enter explorer host address: ",
-HOST = sys.stdin.readline().strip()    # The remote host
+cryptographer = Cryptographer(key)
+
 print "Connecting... ",
 PORT = 64128              # The same port as used by the server
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
