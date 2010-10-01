@@ -35,6 +35,9 @@ from Data import models
 import utilRoomba
 from CryptoJass import Cryptographer
 
+def log(s):
+    print s
+
 class FilterSystemRunner(threading.Thread):
 
     def __init__(self, serial_port, baud_rate, map_obj, origin_pos, origin_cov, gui=None, 
@@ -176,7 +179,7 @@ class FilterSystemRunner(threading.Thread):
         self.server.start()
         
     def handleNetCommand(self, cmd):
-        print cmd
+        log(cmd)
             
     def netServer(self):
         HOST = ''
@@ -198,9 +201,9 @@ class FilterSystemRunner(threading.Thread):
                 continue
             while True:
                 try:
-                    reply = self.handleNetCommand(self.cryptographer.decrypt(conn.recv(1024)))
-                    if reply == "": break
-                    conn.send(reply)
+                    self.handleNetCommand(self.cryptographer.decrypt(conn.recv(1024)))
+                    #if reply == "": break
+                    conn.send("okay")
                 except:
                     break;
             conn.close()
@@ -260,9 +263,9 @@ class FilterSystemRunner(threading.Thread):
             if len(beacon_ranges) != len(self.sm.sensors_by_type['Beacon']):
                 raise RuntimeError, 'No. of beacon ranges does not match No. of beacons.'
             
-            print '-' * 50
-            print 'Explorer Move:', move_data
-            print 'Beacon Ranges:', beacon_ranges
+            log('-' * 50)
+            log('Explorer Move: %s'%move_data)
+            log('Beacon Ranges: %s'%beacon_ranges)
             
             if self._last_move is not None:
                 move = self.me.find_move(self._last_move)
@@ -302,8 +305,8 @@ class FilterSystemRunner(threading.Thread):
                     # Run ...compass...or other things
             
             explorer_pos = self.fm.get_explorer_pos_mean()
-            print 'Estimated Explorer Position:', explorer_pos, '('+str(np.rad2deg(explorer_pos[2]))+')'
-            print '-' * 50
+            log('Estimated Explorer Position: %s (%s)'%(explorer_pos, str(np.rad2deg(explorer_pos[2]))))
+            log('-' * 50)
             return True
         elif 'INITIAL' in out:
             return True
