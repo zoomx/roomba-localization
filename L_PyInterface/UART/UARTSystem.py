@@ -110,8 +110,9 @@ class UART(threading.Thread):
 		Retrieves received UART data since last called.
 		'''
 		with self._output_lock:
-			r_data = self._output_data_buffer
+			r_data = self._output_data_buffer[:]
 			del self._output_data_buffer[:]
+			self._output_data_buffer = []
 			return r_data
 	
 	def set_output_data(self, dat):
@@ -129,8 +130,9 @@ class UART(threading.Thread):
 		Retrieves all input commands since last called.
 		'''
 		with self._input_lock:
-			r_data = self._input_data_buffer
+			r_data = self._input_data_buffer[:]
 			del self._input_data_buffer[:]
+			self._output_data_buffer = []
 			return r_data
 	
 	def set_input_data(self, dat):

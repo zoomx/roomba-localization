@@ -33,10 +33,8 @@ import Sensor
 import Movement
 from Data import models
 import utilRoomba
-from CryptoJass import Cryptographer
+from CryptoJazz import Cryptographer
 
-def log(s):
-    print s
 
 class FilterSystemRunner(threading.Thread):
 
@@ -109,7 +107,7 @@ class FilterSystemRunner(threading.Thread):
                                                       [0,10000], self.beacons[i][0], self.beacons[i][1]))
         
         # Trilateration will be used if 2 or more beacons yield readings.
-        self.sm.add_sensor(Sensor.Trilateration2DSensor(measurement_model[0], np.eye(2)*15,None))#measurement_model[1], None))
+        self.sm.add_sensor(Sensor.Trilateration2DSensor(measurement_model[0], np.eye(2)*measurement_model[1], None))
         
         
         #=======================================================================
@@ -173,13 +171,22 @@ class FilterSystemRunner(threading.Thread):
         #=======================================================================
         # Network Interface
         #=======================================================================
-        self.cryptographer = Cryptographer("dummy")
-        self.server = threading.Thread(self.netServer)
+        self.netlog = ""
+        self.cryptographer = Cryptographer("dummy_password")
+        self.server = threading.Thread(target=self.netServer)
         self.server.daemon = True
         self.server.start()
+		
+    def log(self, s):
+        print s
+        self.netlog = "%s %s"%(self.netlog,s)
         
     def handleNetCommand(self, cmd):
-        log(cmd)
+        tokens = cmd.split(" ")
+        command = tokens[0]
+        args = " ".join(tokens[1:])
+        if command == "move":
+            self.cli.do_move(args)
             
     def netServer(self):
         HOST = ''
@@ -203,9 +210,10 @@ class FilterSystemRunner(threading.Thread):
                 try:
                     self.handleNetCommand(self.cryptographer.decrypt(conn.recv(1024)))
                     #if reply == "": break
-                    conn.send("okay")
+                    conn.send(self.cryptographer.encrypt(self.netlog))
+                    self.netlog = ""
                 except:
-                    break;
+                    break
             conn.close()
             print "Connection closed."
         
@@ -263,9 +271,9 @@ class FilterSystemRunner(threading.Thread):
             if len(beacon_ranges) != len(self.sm.sensors_by_type['Beacon']):
                 raise RuntimeError, 'No. of beacon ranges does not match No. of beacons.'
             
-            log('-' * 50)
-            log('Explorer Move: %s'%move_data)
-            log('Beacon Ranges: %s'%beacon_ranges)
+            self.log('-' * 50)
+            self.log('Explorer Move: %s'%move_data)
+            self.log('Beacon Ranges: %s'%beacon_ranges)
             
             if self._last_move is not None:
                 move = self.me.find_move(self._last_move)
@@ -305,8 +313,8 @@ class FilterSystemRunner(threading.Thread):
                     # Run ...compass...or other things
             
             explorer_pos = self.fm.get_explorer_pos_mean()
-            log('Estimated Explorer Position: %s (%s)'%(explorer_pos, str(np.rad2deg(explorer_pos[2]))))
-            log('-' * 50)
+            self.log('Estimated Explorer Position: %s (%s)'%(explorer_pos, str(np.rad2deg(explorer_pos[2]))))
+            self.log('-' * 50)
             return True
         elif 'INITIAL' in out:
             return True
