@@ -12,6 +12,7 @@ June 7, 2010
 '''
 
 import threading
+import socket
 import logging
 import numpy as np
 
@@ -32,6 +33,7 @@ import Sensor
 import Movement
 from Data import models
 import utilRoomba
+from CryptoJass import Cryptographer
 
 class FilterSystemRunner(threading.Thread):
 
@@ -164,6 +166,45 @@ class FilterSystemRunner(threading.Thread):
                 self.rg.add_draw_method(beacon.draw)
             
             self.rg.add_draw_method(self._draw_all_waypoints)
+        
+        #=======================================================================
+        # Network Interface
+        #=======================================================================
+        self.cryptographer = Cryptographer("dummy")
+        self.server = threading.Thread(self.netServer)
+        self.server.daemon = True
+        self.server.start()
+        
+    def handleNetCommand(self, cmd):
+        print cmd
+            
+    def netServer(self):
+        HOST = ''
+        PORT = 64128
+        while 1:
+            print("Listening...")
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind((HOST, PORT))
+            s.listen(1)
+            conn, (addr, _) = s.accept()
+            print 'Establishing connection with %s...'%addr
+            data = conn.recv(1024)
+            if self.cryptographer.decrypt(data) == "HELLO":
+                conn.send(self.cryptographer.encrypt("OK"))
+                print "OK"
+            else:
+                print "Client connection failed.  Resetting server."
+                conn.close()
+                continue
+            while True:
+                try:
+                    reply = self.handleNetCommand(self.cryptographer.decrypt(conn.recv(1024)))
+                    if reply == "": break
+                    conn.send(reply)
+                except:
+                    break;
+            conn.close()
+            print "Connection closed."
         
     def exit(self):
         self.quit = True
