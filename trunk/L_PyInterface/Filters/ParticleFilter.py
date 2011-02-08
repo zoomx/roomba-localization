@@ -28,7 +28,7 @@ class ParticleFilter(Filter.Filter):
     
     #@todo: Get rid of defaults, except for total_particles once everything works...
     # implies the wrong thing.
-    def __init__(self, explorer_pos=[], explorer_cov=[], total_particles=1000):
+    def __init__(self, explorer_pos=[], explorer_cov=[], total_particles=250):
         '''
         Does nothing for now.
         '''

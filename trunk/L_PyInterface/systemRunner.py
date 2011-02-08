@@ -12,7 +12,6 @@ June 7, 2010
 '''
 
 import threading
-import socket
 import logging
 import numpy as np
 
@@ -33,8 +32,6 @@ import Sensor
 import Movement
 from Data import models
 import utilRoomba
-from CryptoJazz import Cryptographer
-
 
 class FilterSystemRunner(threading.Thread):
 
@@ -107,7 +104,7 @@ class FilterSystemRunner(threading.Thread):
                                                       [0,10000], self.beacons[i][0], self.beacons[i][1]))
         
         # Trilateration will be used if 2 or more beacons yield readings.
-        self.sm.add_sensor(Sensor.Trilateration2DSensor(measurement_model[0], np.eye(2)*measurement_model[1], None))
+        self.sm.add_sensor(Sensor.Trilateration2DSensor(measurement_model[0], np.eye(2)*15,None))#measurement_model[1], None))
         
         
         #=======================================================================
@@ -168,55 +165,6 @@ class FilterSystemRunner(threading.Thread):
             
             self.rg.add_draw_method(self._draw_all_waypoints)
         
-        #=======================================================================
-        # Network Interface
-        #=======================================================================
-        self.netlog = ""
-        self.cryptographer = Cryptographer("dummy_password")
-        self.server = threading.Thread(target=self.netServer)
-        self.server.daemon = True
-        self.server.start()
-		
-    def log(self, s):
-        print s
-        self.netlog = "%s %s"%(self.netlog,s)
-        
-    def handleNetCommand(self, cmd):
-        tokens = cmd.split(" ")
-        command = tokens[0]
-        args = " ".join(tokens[1:])
-        if command == "move":
-            self.cli.do_move(args)
-            
-    def netServer(self):
-        HOST = ''
-        PORT = 64128
-        while 1:
-            print("Listening...")
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.bind((HOST, PORT))
-            s.listen(1)
-            conn, (addr, _) = s.accept()
-            print 'Establishing connection with %s...'%addr
-            data = conn.recv(1024)
-            if self.cryptographer.decrypt(data) == "HELLO":
-                conn.send(self.cryptographer.encrypt("OK"))
-                print "OK"
-            else:
-                print "Client connection failed.  Resetting server."
-                conn.close()
-                continue
-            while True:
-                try:
-                    self.handleNetCommand(self.cryptographer.decrypt(conn.recv(1024)))
-                    #if reply == "": break
-                    conn.send(self.cryptographer.encrypt(self.netlog))
-                    self.netlog = ""
-                except:
-                    break
-            conn.close()
-            print "Connection closed."
-        
     def exit(self):
         self.quit = True
         #=======================================================================
@@ -271,9 +219,9 @@ class FilterSystemRunner(threading.Thread):
             if len(beacon_ranges) != len(self.sm.sensors_by_type['Beacon']):
                 raise RuntimeError, 'No. of beacon ranges does not match No. of beacons.'
             
-            self.log('-' * 50)
-            self.log('Explorer Move: %s'%move_data)
-            self.log('Beacon Ranges: %s'%beacon_ranges)
+            print '-' * 50
+            print 'Explorer Move:', move_data
+            print 'Beacon Ranges:', beacon_ranges
             
             if self._last_move is not None:
                 move = self.me.find_move(self._last_move)
@@ -313,8 +261,8 @@ class FilterSystemRunner(threading.Thread):
                     # Run ...compass...or other things
             
             explorer_pos = self.fm.get_explorer_pos_mean()
-            self.log('Estimated Explorer Position: %s (%s)'%(explorer_pos, str(np.rad2deg(explorer_pos[2]))))
-            self.log('-' * 50)
+            print 'Estimated Explorer Position:', explorer_pos, '('+str(np.rad2deg(explorer_pos[2]))+')'
+            print '-' * 50
             return True
         elif 'INITIAL' in out:
             return True
@@ -431,7 +379,8 @@ if __name__ == '__main__':
     
     #gobject.threads_init() # Need to do this, or gtk will not let go of lock
     
-    origin_pos = np.array([200,0,np.deg2rad(90)])
+    origin_pos = np.array([0,0,np.deg2rad(90)])
+    #origin_pos = np.array([200,0,np.deg2rad(90)])
     #origin_pos = np.array([96.41005535,   1.3773877,    np.deg2rad(7)])
     #origin_pos = np.array([200, 300, np.deg2rad(180)])
     origin_cov = np.eye(3) * 3 # Initial Covariance

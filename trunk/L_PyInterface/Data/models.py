@@ -28,11 +28,13 @@ def load_data(path=''):
     
     pthjoin = os.path.join # For convenience...
     
-    f = sio.loadmat(pthjoin(path, 'translation_model.mat'))
+    f = sio.loadmat(pthjoin(path, 'eow_tran_mod.mat'))
+    #f = sio.loadmat(pthjoin(path, 'translation_model.mat'))
     translation_model = f['translation_model']
     translation_data = f['translation_data']
     
-    f = sio.loadmat(pthjoin(path, 'rotation_model.mat'))
+    f = sio.loadmat(pthjoin(path, 'eow_rot_mod.mat'))
+    #f = sio.loadmat(pthjoin(path, 'rotation_model.mat'))
     rotation_model = f['rotation_model']
     rotation_data = f['rotation_data']
     
