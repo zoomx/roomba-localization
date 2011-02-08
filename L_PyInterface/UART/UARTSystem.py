@@ -132,7 +132,7 @@ class UART(threading.Thread):
 		with self._input_lock:
 			r_data = self._input_data_buffer[:]
 			del self._input_data_buffer[:]
-			self._output_data_buffer = []
+			self._input_data_buffer = []
 			return r_data
 	
 	def set_input_data(self, dat):
