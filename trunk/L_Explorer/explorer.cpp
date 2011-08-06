@@ -47,7 +47,7 @@ uint8_t radioPowerPin = 9;
 uint8_t ledPin = 13;
 #define flip_LED() digitalWrite(ledPin, !digitalRead(ledPin));
 
-#define TOTAL_BEACONS	3	// can't fit more than 12 beacons in log packet
+#define TOTAL_BEACONS	4	// can't fit more than 12 beacons in log packet
 int16_t beacon_distances[TOTAL_BEACONS];
 uint8_t explorer_beaconrx_address[RADIO_ADDRESS_LENGTH] = {0xB7, 0xB7, 0xB7, 0xB7, 0xFF};
 #define BUF_LEN 64
@@ -143,7 +143,7 @@ int main()
 #endif
 
 
-	Compass_Init();
+	//Compass_Init();
 	Roomba_ConfigDirtDetectLED(LED_ON);
 	// this routine can be enabled to perform an infinite ping test on a given beacon.
 	//beacon_test_routine(2);

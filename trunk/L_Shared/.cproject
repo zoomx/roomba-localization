@@ -42,6 +42,9 @@
 <tool id="de.innot.avreclipse.tool.size.winavr.lib.debug.1783475717" name="Print Size" superClass="de.innot.avreclipse.tool.size.winavr.lib.debug"/>
 </toolChain>
 </folderInfo>
+<sourceEntries>
+<entry excluding="compass" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+</sourceEntries>
 </configuration>
 </storageModule>
 <storageModule moduleId="scannerConfiguration">
@@ -808,6 +811,9 @@
 <tool id="de.innot.avreclipse.tool.size.winavr.lib.release.926032728" name="Print Size" superClass="de.innot.avreclipse.tool.size.winavr.lib.release"/>
 </toolChain>
 </folderInfo>
+<sourceEntries>
+<entry excluding="compass" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+</sourceEntries>
 </configuration>
 </storageModule>
 <storageModule moduleId="scannerConfiguration">

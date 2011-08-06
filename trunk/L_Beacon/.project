@@ -3,7 +3,6 @@
 	<name>L_Beacon</name>
 	<comment></comment>
 	<projects>
-		<project>L_Shared</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
