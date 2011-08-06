@@ -11,8 +11,8 @@
 #include "radio/radio.h"
 #include "radio/packet.h"
 
-#define BEACON_ERROR -19	// Constant error in the beacon reading, in cm
-
+#define BEACON_ERROR 19	// Constant error in the beacon reading, in cm
+// use 30 for seeed sonars.
 typedef enum _rs
 {
 	NO_PACKET,
@@ -92,7 +92,7 @@ void poll_beacons(int16_t* beacon_distances, uint8_t num_beacons)
 		{
 			ping_result = ping_beacon(i + 1);
 			// give the sonar pulse some time to settle down
-			delay(50);
+			delay(150);
 
 			if (ping_result == 0 || ping_result == 1)
 			{
