@@ -1,0 +1,1 @@
+This is for a research project in localization.  The code is used for an experiment to gather localization data (odometry plus distance to remote stations).  The data are processed later along with accurate, independently collected ground truth measurements, to test localization techniques.
